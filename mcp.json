@@ -1,0 +1,111 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@context7/mcp-server"
+      ],
+      "env": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}",
+        "CONTEXT7_WORKSPACE": "elfi-development",
+        "CONTEXT7_PROJECT": "elfi"
+      },
+      "settings": {
+        "capabilities": {
+          "tools": true,
+          "resources": true,
+          "prompts": true,
+          "sampling": true
+        },
+        "permissions": {
+          "read": true,
+          "write": true,
+          "execute": true,
+          "network": true
+        },
+        "integration": {
+          "zenoh": {
+            "enabled": true,
+            "endpoints": [
+              "tcp/localhost:7447"
+            ],
+            "keySpace": "/elf/docs/*"
+          },
+          "crdt": {
+            "enabled": true,
+            "provider": "automerge",
+            "conflictResolution": "semantic"
+          },
+          "storage": {
+            "backend": "rocksdb",
+            "path": "./elfi-storage"
+          }
+        },
+        "workflows": {
+          "literate": {
+            "enabled": true,
+            "format": ".elf",
+            "parser": "tree-sitter"
+          },
+          "collaboration": {
+            "realtime": true,
+            "offline": true,
+            "p2p": true
+          },
+          "execution": {
+            "kernels": ["rust", "python", "javascript"],
+            "jupyter": true
+          }
+        },
+        "security": {
+          "authentication": "jwt",
+          "encryption": "tls",
+          "audit": true
+        },
+        "performance": {
+          "cache": true,
+          "compression": "zstd",
+          "maxConnections": 100,
+          "timeout": 30000
+        }
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/allenwoods/Sync/2-engineering/elfi"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://localhost/elfi_db"
+      ],
+      "env": {
+        "POSTGRES_CONNECTION": "${POSTGRES_CONNECTION_STRING}"
+      }
+    }
+  }
+}
