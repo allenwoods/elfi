@@ -1,4 +1,4 @@
-# 06-interpreter.md
+# `.elf` 的解释器实现
 
 ## 6.1. 项目概述：elfi——一个基于Rust的无头内核
 

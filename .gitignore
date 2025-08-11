@@ -198,4 +198,14 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Astro
+.astro
+
 # End of https://www.toptal.com/developers/gitignore/api/windows,macos,linux,visualstudiocode,jetbrains+all,rust
+
+# Added by cargo
+
+/target
+
+# mdbook generated files
+/docs/book/
