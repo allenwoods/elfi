@@ -1,62 +1,68 @@
-# ELFI: Event-sourcing Literate File Interpreter
+# ELFI：事件溯源的文学化文件解释器
 
-This document provides a summary of the `elfi` project, based on its technical design document. It serves as a persistent context for the Gemini/Claude agent to understand the project's goals, architecture, and terminology.
+本文档基于其技术设计文档，对 `elfi` 项目进行概述。它将作为 Gemini/Claude 代理的持久化上下文，以帮助其理解项目的目标、架构和术语。
 
-## Project Vision
+## 项目愿景
 
-**`elfi` (Event-sourcing Literate File Interpreter)** is a new literate programming paradigm built around the `.elf` file format. It is designed from the ground up for native, decentralized collaboration to overcome the limitations of existing tools like Jupyter Notebooks, LaTeX, and Org-mode.
+**`elfi` (Event-sourcing Literate File Interpreter)** 是一种全新的文学化编程范式，围绕 `.elf` 文件格式构建。它从零开始设计，旨在实现原生的、去中心化的协作，以克服现有工具（如 Jupyter Notebooks、LaTeX 和 Org-mode）的局限性。
 
-The goal is to create a powerful, transparent, and efficient medium for human-computer collaboration in software engineering and scientific research.
+其目标是为软件工程和科学研究中的人机协作，创造一个强大、透明且高效的媒介。
 
-## Core Principles
+## 核心原则
 
-- **Parser-First & Human-Readable:** `.elf` is a pure text format that is both human-friendly and easily parsable into a rich, structured in-memory data model. It is designed to be friendly to version control systems like Git.
-- **Native Collaboration:** The data model is built on **Conflict-Free Replicated Data Types (CRDTs)**, enabling seamless concurrent and offline editing while guaranteeing eventual consistency.
-- **Event Sourcing:** A document is not a static file but a replayable, immutable log of all operations (changes). This provides ultimate transparency, auditability, and a powerful version history.
-- **Decentralized & Network-Agnostic:** The architecture supports various network topologies (P2P, client-server, mesh) and is not dependent on a single central server, ensuring data sovereignty.
+- **解析器优先 & 人类可读：** `.elf` 是一种纯文本格式，既对人类友好，又易于解析为丰富的、结构化的内存数据模型。它的设计对 Git 等版本控制系统非常友好。
+- **原生协作：** 数据模型建立在**无冲突复制数据类型 (CRDTs)** 之上，支持无缝的并发和离线编辑，同时保证最终一致性。
+- **事件溯源：** 文档不是一个静态文件，而是一个可重放的、不可变的所有操作（变更）日志。这提供了极高的透明度、可审计性和强大的版本历史。
+- **去中心化 & 网络无关：** 该架构支持各种网络拓扑（P2P、客户端-服务器、网状），且不依赖于单一中央服务器，确保了数据主权。
 
-## System Architecture
+## 系统架构
 
-The `elfi` system is composed of several distinct layers, implemented in a modular Rust kernel.
+`elfi` 系统由几个不同的层次组成，并在一个模块化的 Rust 内核中实现。
 
-### 1. Data Model (CRDT Core)
+### 1. 数据模型 (CRDT 核心)
 
-- **Foundation:** Built on **Event Sourcing** and an **Automerge-inspired CRDT** model. Unlike performance-focused CRDTs (like Yjs), it retains the full, immutable operation history.
-- **Structure:** A document is a flat list of "Block" objects. Each block is a CRDT Map (`id`, `type`, `content`, `metadata`).
-- **Hierarchy:** Rich hierarchical structures (e.g., chapters, sections) are represented using an **Adjacency List Model**. A `parent` ID is stored in a block's `metadata`, creating logical nesting on top of a flat data structure. This simplifies concurrent move operations.
-- **Conflict Resolution:** Implements a block-aware, semantic conflict resolution strategy. Instead of relying on default CRDT behavior, it can use strategies like 3-way merge for code or expose conflicts to the UI for manual resolution.
+- **基础：** 建立在**事件溯源**和受 **Automerge 启发的 CRDT** 模型之上。与注重性能的 CRDT（如 Yjs）不同，它保留了完整的、不可变的操作历史。
+- **结构：** 文档是一个扁平的 "Block" 对象列表。每个块都是一个 CRDT Map (`id`, `type`, `content`, `metadata`)。
+- **层级结构：** 丰富的层级结构（如章节、小节）通过**邻接列表模型**来表示。父块的 `id` 存储在子块的 `metadata` 中，从而在一个扁平的数据结构之上创建了逻辑嵌套。这简化了并发的移动操作。
+- **冲突解决：** 实现了一种块感知的、语义化的冲突解决策略。它不依赖于默认的 CRDT 行为，而是可以针对代码使用三方合并等策略，或将冲突暴露给 UI 进行手动解决。
 
-### 2. Storage & Sync (Zenoh Network)
+### 2. 存储与同步 (Zenoh 网络)
 
-- **Protocol:** Uses **Eclipse Zenoh** as a unified pub/sub, distributed query, and storage network.
-- **Mechanism:** CRDT operations are published as messages to a unique key-space for each document (e.g., `/elf/docs/<doc_uuid>/ops`). Clients subscribe to this key-space for real-time updates and query it to fetch historical operations.
-- **Persistence:** Decoupled via Zenoh's storage backend plugins. Operation logs can be stored in filesystems, RocksDB, InfluxDB, or any custom database without changing the core `elfi` logic.
+- **协议：** 使用 **Eclipse Zenoh** 作为一个统一的发布/订阅、分布式查询和存储网络。
+- **机制：** CRDT 操作作为消息发布到每个文档唯一的键空间（例如 `/elf/docs/<doc_uuid>/ops`）。客户端订阅此键空间以获取实时更新，并查询它以获取历史操作。
+- **持久化：** 通过 Zenoh 的存储后端插件实现解耦。操作日志可以存储在文件系统、RocksDB、InfluxDB 或任何自定义数据库中，而无需更改 `elfi` 的核心逻辑。
 
-### 3. Weave API (Content Creation Layer)
+### 3. Weave API (内容创作层)
 
-- **Purpose:** A high-level API for primary content contributors (programmers, writers).
-- **Model:** Implements a **Repository (`Repo`) model**, abstracting away the complexities of networking and storage. Developers interact with a `DocHandle` to modify documents.
-- **Functionality:** Provides methods like `change()`, `subscribe()`, `getHistory()`, and `viewAt()` (for time travel), as well as helpers for navigating the logical hierarchy (`getParent`, `getChildren`).
+- **目的：** 为主要内容贡献者（程序员、作者）提供的高级 API。
+- **模型：** 实现了一个**仓库 (`Repo`) 模型**，抽象了网络和存储的复杂性。开发者通过 `DocHandle` 与文档进行交互以修改文档。
+- **功能：** 提供 `change()`、`subscribe()`、`getHistory()` 和 `viewAt()` (用于时间旅行) 等方法，以及用于导航逻辑层级 (`getParent`, `getChildren`) 的辅助函数。
 
-### 4. Tangle API (Interactive Rendering Layer)
+### 4. Tangle API (交互式渲染层)
 
-- **Purpose:** An API for UI clients that render interactive views of `.elf` documents.
-- **Model:** Based on the **Islands Architecture**. The document is rendered as static HTML (the "ocean") with interactive components ("islands") that are hydrated selectively.
-- **State Management:** Creates a clear boundary between:
-    - **Local/Transient UI State:** Managed inside each island (e.g., a slider's current position during drag).
-    - **Global/Persistent State:** The CRDT document, which acts as the shared state bus.
-- **Pinning:** Provides a `pinBlockState()` API for an island to commit a significant state change back to the CRDT, making it persistent and shared with collaborators.
+- **目的：** 为渲染 `.elf` 文档交互式视图的 UI 客户端提供的 API。
+- **模型：** 基于**孤岛架构**。文档被渲染为静态 HTML（“海洋”），其中包含可选择性“激活”的交互式组件（“孤岛”）。
+- **状态管理：** 在以下两者之间创建了清晰的界限：
+    - **本地/临时 UI 状态：** 在每个孤岛内部管理（例如，拖动滑块时的当前位置）。
+    - **全局/持久化状态：** CRDT 文档，作为共享的状态总线。
+- **固定 (Pinning)：** 提供一个 `pinBlockState()` API，供孤岛将其重要的状态变更提交回 CRDT，使其持久化并与协作者共享。
 
-### 5. `elfi` Interpreter (Rust Kernel)
+### 5. `elfi` 解释器 (Rust 内核)
 
-- **Implementation:** A headless kernel written in **Rust** for performance and safety.
-- **Core Dependencies:**
-    - **`tree-sitter`:** For parsing the `.elf` text format into an AST.
-    - **`automerge`:** For the in-memory CRDT data model.
-    - **`zenoh`:** For all networking and synchronization.
-- **Structure:** A Cargo workspace containing modular crates:
-    - `elfi-core`: The main library exposing the Weave and Tangle APIs.
-    - `elfi-parser`: The Tree-sitter grammar and parsing logic.
-    - `elfi-cli`: A command-line tool for offline file management.
-    - `elfi-ffi`: A C-compatible FFI layer for bindings to other languages and WebAssembly.
-- **Code Execution:** Includes a module to interact with external code execution kernels via the Jupyter protocol.
+- **实现：** 一个用 **Rust** 编写的无头内核，以实现高性能和安全性。
+- **核心依赖：**
+    - **`tree-sitter`：** 用于将 `.elf` 文本格式解析为 AST。
+    - **`automerge`：** 用于内存中的 CRDT 数据模型。
+    - **`zenoh`：** 用于所有网络和同步。
+- **结构：** 一个 Cargo 工作区，包含模块化的 crates：
+    - `elfi-core`：暴露 Weave 和 Tangle API 的主库。
+    - `elfi-parser`：Tree-sitter 语法和解析逻辑。
+    - `elfi-cli`：用于离线文件管理的命令行工具。
+    - `elfi-ffi`：一个 C 兼容的 FFI 层，用于绑定到其他语言和 WebAssembly。
+- **代码执行：** 包含一个通过 Jupyter 协议与外部代码执行内核交互的模块。
+
+---
+
+**Agent Instructions:**
+
+请总是使用中文进行回复，但使用英文的技术词汇。

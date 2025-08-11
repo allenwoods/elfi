@@ -1,13 +1,15 @@
-# Implementation Design
+# 实现设计
 
-This section translates the high-level architectural principles from the preceding chapters into a more concrete and actionable implementation plan for the `elfi` Rust kernel.
+本章节将前几章中高层次的架构原则，转化为 `elfi` Rust 内核更具体、更可操作的实现计划。
 
-These documents are intended to be living documents that will evolve as the implementation progresses. They serve as a guide for developers, outlining the core data structures, workflows, and API contracts that will form the foundation of the system.
+这些文档旨在成为“活文档”，将随着实施的进展而演变。它们作为开发人员的指南，概述了构成系统基础的核心数据结构、工作流程和 API 契约。
 
-The following documents detail the implementation specifics for each major component of the `elfi` workspace:
+以下文档详细说明了 `elfi` 工作区中每个主要组件的实现细节：
 
-- **[01 - Parser (`elfi-parser`)](./01-parser_and_format.md)**: Defines the initial plain-text format for `.elf` files and the strategy for parsing it into a CRDT model.
+- **[01 - 解析器 (`elfi-parser`)](./01-parser_and_format.md)**：定义了 `.elf` 文件的初始纯文本格式以及将其解析为 CRDT 模型的策略。
 
-- **[02 - Core Logic (`elfi-core`)](./02-core_logic.md)**: Details the internal data structures, asynchronous workflows, and API implementations for the core library.
+- **[02 - 核心逻辑 (`elfi-core`)](./02-core_logic.md)**：详细介绍了核心库的内部数据结构、异步工作流程和 API 实现。
 
-- **[03 - Command-Line Interface (`elfi-cli`)](./03-cli.md)**: Specifies the commands, arguments, and functionality of the command-line tool.
+- **[03 - 命令行界面 (`elfi-cli`)](./03-cli.md)**：规定了命令行工具的命令、参数和功能。
+
+- **[04 - 链接与转译 (`elfi-linking`)](./04-linking_and_transclusion.md)**：定义了允许一个 `.elf` 文件引用和嵌入另一个文件内容的机制。

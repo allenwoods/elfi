@@ -73,7 +73,55 @@ Yjs为了追求极致的性能和内存效率，其设计默认包含了垃圾�
 
 ## 2.5. 通过元数据实现层级结构 (Hierarchical Structures via Metadata)
 
-### 2.5.1. 问题陈述
+### 2.5.1. 架构概览
+
+下图展示了 `.elf` 文档的整体架构：
+
+```mermaid
+graph TB
+    subgraph "用户层"
+        U1[作者] 
+        U2[协作者]
+    end
+    
+    subgraph "API 层"
+        W[Weave API<br/>内容创作]
+        T[Tangle API<br/>渲染交互]
+    end
+    
+    subgraph "核心层"
+        C[elfi-core<br/>CRDT 协调]
+        P[elfi-parser<br/>文本解析]
+    end
+    
+    subgraph "数据层"
+        AM[Automerge<br/>CRDT 引擎]
+        Z[Zenoh<br/>网络同步]
+    end
+    
+    subgraph "存储层"
+        FS[文件系统]
+        DB[(数据库)]
+        S3[云存储]
+    end
+    
+    U1 --> W
+    U2 --> T
+    W --> C
+    T --> C
+    C --> P
+    C --> AM
+    C --> Z
+    Z --> FS
+    Z --> DB  
+    Z --> S3
+    
+    style C fill:#e1f5fe
+    style AM fill:#f3e5f5
+    style Z fill:#e8f5e8
+```
+
+### 2.5.2. 问题陈述
 
 纯粹的扁平块列表模型虽然极大地简化了协作的实现，但在表达复杂的、具有内在层级关系的文档结构（如书籍的章节、报告的大纲、嵌套的任务列表）时，其表达能力是有限的。在扁平列表中，所有块都处于同一层级，无法直观地体现它们之间的从属关系。
 

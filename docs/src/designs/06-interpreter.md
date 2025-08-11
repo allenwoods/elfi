@@ -24,9 +24,9 @@
 
 | **Crate 名称** | **描述**                                                     | **主要依赖**                                              |
 | -------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
-| `elfi-core`    | 核心库crate，包含所有核心逻辑、数据结构，并暴露公共的Weave和Tangle API。这是整个系统的核心。 | `automerge`, `zenoh`, `elfi-parser`, `thiserror`, `tokio` |
-| `elfi-parser`  | 一个专门的库crate，包含为`.elf`格式编写的Tree-sitter语法，以及将文本解析为AST并将其转换为初始CRDT状态的逻辑。 | `tree-sitter`                                             |
-| `elfi-cli`     | 一个二进制crate，提供一个命令行工具，用于离线检查、创建、转换和管理`.elf`文件。 | `elfi-core`, `clap`, `anyhow`                             |
+| [`elfi-core`](../implementations/02-core_logic.md)    | 核心库crate，包含所有核心逻辑、数据结构，并暴露公共的Weave和Tangle API。这是整个系统的核心。 | `automerge`, `zenoh`, `elfi-parser`, `thiserror`, `tokio` |
+| [`elfi-parser`](../implementations/01-parser_and_format.md)  | 一个专门的库crate，包含为`.elf`格式编写的Tree-sitter语法，以及将文本解析为AST并将其转换为初始CRDT状态的逻辑。 | `tree-sitter`                                             |
+| [`elfi-cli`](../implementations/03-cli.md)     | 一个二进制crate，提供一个命令行工具，用于离线检查、创建、转换和管理`.elf`文件。 | `elfi-core`, `clap`, `anyhow`                             |
 | `elfi-ffi`     | 一个`cdylib` crate，为`elfi-core`暴露一个C兼容的外部函数接口（FFI）。这为绑定到其他语言（如Python, Node.js）或编译到WebAssembly提供了基础。 | `elfi-core`                                               |
 
 ## 6.4. `elfi-core` 的核心接口与模块

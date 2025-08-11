@@ -1,0 +1,35 @@
+# Justfile for ELFI documentation project
+# Run `just --list` to see available commands
+
+# Install required tools for documentation
+install-tools:
+    cargo install mdbook mdbook-mermaid
+
+# Setup mermaid support
+setup: install-tools
+    mdbook-mermaid install .
+
+# Build the documentation
+build:
+    mdbook build
+
+# Serve the documentation locally with auto-reload
+serve:
+    mdbook serve --open
+
+# Clean build artifacts
+clean:
+    mdbook clean
+
+# Generate merged markdown documentation
+merge:
+    ./merge_markdown.sh
+
+# Generate merged markdown without code blocks
+merge-no-code:
+    ./merge_markdown.sh --no-code
+
+# Full setup for new developers
+init: install-tools setup
+    @echo "✓ Documentation tools installed and configured!"
+    @echo "Run 'just serve' to start the development server."

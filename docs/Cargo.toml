@@ -1,0 +1,31 @@
+[package]
+name = "elfi-docs"
+version = "0.1.0"
+edition = "2021"
+
+# 这是一个虚拟工作空间，只用于管理文档构建工具
+# 类似于 Python 的 pyproject.toml + uv
+
+# 开发依赖 - 用于构建和维护文档
+[dependencies]
+# 这些依赖主要用于文档生成，不是实际的库依赖
+
+# 对于文档项目，我们使用 cargo install 来安装工具
+# 但也可以在这里声明，让其他开发者知道需要哪些工具
+
+# 注意：mdbook 和 mdbook-mermaid 作为二进制工具，
+# 通常通过 cargo install 全局安装，而不是作为项目依赖
+
+[package.metadata.docs]
+# 文档构建所需的工具
+required_tools = [
+    "mdbook",
+    "mdbook-mermaid"
+]
+
+# 自定义脚本来安装所需工具
+[package.metadata.scripts]
+install-tools = "cargo install mdbook mdbook-mermaid"
+setup = "mdbook-mermaid install ."
+build = "mdbook build"
+serve = "mdbook serve"

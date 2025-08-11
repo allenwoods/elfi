@@ -1,26 +1,35 @@
-# Summary
+# 目录
 
-[Introduction](./01-motivation.md)
+[引言](./designs/01-motivation.md)
 
-# Architecture
+# 架构
 
-- [Data Modeling](./02-data_modeling.md)
-- [Storage & Sync](./03-storage_sync.md)
-- [Weave API](./04-weave.md)
-- [Tangle API](./05-tangle.md)
-- [Interpreter](./06-interpreter.md)
-
----
-
-# Implementation Design
-
-- [Overview](./implementations/00-overview.md)
-- [Format & Parser](./implementations/01-parser_and_format.md)
-- [Core Logic](./implementations/02-core_logic.md)
-- [CLI](./implementations/03-cli.md)
+- [数据建模](./designs/02-data_modeling.md)
+- [存储与同步](./designs/03-storage_sync.md)
+- [Weave API](./designs/04-weave.md)
+- [Tangle API](./designs/05-tangle.md)
+- [解释器](./designs/06-interpreter.md)
 
 ---
 
-# API Reference
+# 实现设计
 
-- [Rust API Docs (soon)](../target/doc/elfi/index.html)
+- [概述](./implementations/00-overview.md)
+- [格式与解析器](./implementations/01-parser_and_format.md)
+- [核心逻辑](./implementations/02-core_logic.md)
+    - [命令行界面](./implementations/03-cli.md)
+    - [链接与转译](./implementations/04-linking_and_transclusion.md)
+
+# 使用场景
+- [自举](./usecases/01-bootstrapping.md)
+- [对话即文档](./usecases/02-conversation-as-document.md)
+- [文档即 App](./usecases/03-document-as-app.md)
+
+---
+
+# 示例
+- [通用示例](./example.elf.md)
+
+# API 参考
+
+- [Rust API 文档 (即将推出)](../target/doc/elfi/index.html)

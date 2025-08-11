@@ -1,16 +1,16 @@
-# Implementation: 01 - Parser and .elf Format
+# 实现：01 - 解析器与 .elf 格式
 
-This document specifies the initial plain-text format for `.elf` files and the strategy for parsing this format into the CRDT-based in-memory model.
+本文档规定了 `.elf` 文件的初始纯文本格式，以及将此格式解析为基于 CRDT 的内存模型的策略。
 
-## 1. `.elf` Plain Text Format
+## 1. `.elf` 纯文本格式
 
-The format is designed to be human-readable, version-control-friendly, and easily parsable. It consists of a sequence of **Blocks** separated by a standard `---` separator. This design is directly inspired by the provided `example.elf.md`.
+该格式旨在实现人类可读、对版本控制友好且易于解析。它由一系列**块 (Blocks)** 组成，块之间由标准 `---` 分隔符隔开。此设计直接受到所提供的 `example.elf.md` 的启发。
 
-A **Block** has two distinct parts:
-1.  A **Metadata Section** (YAML Frontmatter)
-2.  A **Content Section**
+一个**块**有两个不同的部分：
+1.  **元数据部分** (YAML Frontmatter)
+2.  **内容部分**
 
-### Example Block Structure:
+### 块结构示例：
 
 ```
 ---
@@ -25,48 +25,63 @@ penguins = sns.load_dataset("penguins")
 penguins.head()
 ```
 
-### Metadata Section
+### 元数据部分
 
--   **Syntax**: A valid YAML object enclosed by `---` at the beginning of a block.
--   **Required Fields**:
-    -   `id` (String): A unique identifier for the block. While any string is valid, using UUIDs is recommended for new blocks to prevent collisions.
-    -   `type` (String): A string literal defining the block's type (e.g., `"markdown"`, `"code"`). This determines how the content is rendered and processed.
--   **Optional Fields**:
-    -   `metadata` (Object): A nested YAML object for storing arbitrary metadata. This provides a namespace for extensibility and is the required location for semantic information like:
-        -   `parent` (String): The `id` of the parent block, used to construct the logical hierarchy.
-        -   `language` (String): The language of a `code` block (e.g., `"python"`, `"rust"`).
-        -   `interactive` (Boolean): A flag for Tangle to determine if a block should be "hydrated" as an interactive island.
+-   **语法**：一个有效的 YAML 对象，由 `---` 包围，位于块的开头。
+-   **必填字段**：
+    -   `id` (String)：块的唯一标识符。虽然任何字符串都有效，但建议为新块使用 UUID 以防止冲突。
+    -   `type` (String)：定义块类型的字符串字面量（例如 `"markdown"`, `"code"`）。这决定了内容如何被渲染和处理。
+-   **可选字段**：
+    -   `metadata` (Object)：一个用于存储任意元数据的嵌套 YAML 对象。这为可扩展性提供了命名空间，并且是存储语义信息（如以下内容）的必需位置：
+        -   `parent` (String)：父块的 `id`，用于构建逻辑层级。
+        -   `language` (String)：`code` 块的语言（例如 `"python"`, `"rust"`）。
+        -   `interactive` (Boolean)：一个供 Tangle 使用的标志，以确定一个块是否应作为交互式孤岛被“激活”。
 
-### Content Section
+### 内容部分
 
-The content section contains the raw text of the block. It begins immediately after the closing `---` of the metadata section and extends until the next block separator (`---`) or the end of the file.
+内容部分包含块的原始文本。它紧跟在元数据部分的结束 `---` 之后，并一直延伸到下一个块分隔符 (`---`) 或文件末尾。
 
-## 2. Parsing Strategy (`elfi-parser`)
+## 2. 解析策略 (`elfi-parser`)
 
-The `elfi-parser` crate is responsible for converting the `.elf` text format into an `automerge` document instance.
+`elfi-parser` crate 负责将 `.elf` 文本格式转换为 `automerge` 文档实例。
 
-### 2.1. Tree-sitter Grammar
+### 2.1. Tree-sitter 语法
 
-A `grammar.js` will be created for `tree-sitter`. It will define the following structure:
--   A `source_file` consists of one or more `block` nodes.
--   A `block` node is composed of a `metadata_section` and a `content_section`.
--   The `metadata_section` will be recognized as text enclosed by `---`.
--   The `content_section` is the remaining text.
+将为 `tree-sitter` 创建一个 `grammar.js` 文件。它将定义以下结构：
+-   一个 `source_file` 由一个或多个 `block` 节点组成。
+-   一个 `block` 节点由一个 `metadata_section` 和一个 `content_section` 组成。
+-   `metadata_section` 将被识别为由 `---` 包围的文本。
+-   `content_section` 是剩余的文本。
 
-This approach allows for efficient and error-tolerant parsing of the file into a concrete syntax tree (CST).
+这种方法可以高效且容错地将文件解析为具体语法树 (CST)。
 
-### 2.2. CST to CRDT Conversion
+### 2.2. CST 到 CRDT 的转换
 
-The parser will provide a primary function:
+解析器将提供一个主函数：
 `pub fn parse_to_doc(text: &str) -> Result<automerge::AutoCommit, ElfiError>`
 
-The conversion process will be as follows:
-1.  The input `text` is parsed by Tree-sitter into a CST.
-2.  The parser iterates through the top-level `block` nodes of the CST.
-3.  For each `block` node:
-    a. The text content of its `metadata_section` child is extracted and parsed using a YAML parser (e.g., `serde_yaml`).
-    b. A new map object is created within a new `automerge` transaction, representing the block.
-    c. The parsed YAML fields (`id`, `type`, `metadata`) are inserted into the Automerge map.
-    d. The `content` field is created as an `automerge::Text` object, initialized with the text from the `content_section` child node.
-    e. This new block map is appended to a top-level `blocks` list in the Automerge document.
-4.  The final, populated `automerge::AutoCommit` document is returned.
+转换过程如下：
+1.  输入的 `text` 被 Tree-sitter 解析为 CST。
+2.  解析器遍历 CST 的顶级 `block` 节点。
+3.  对于每个 `block` 节点：
+    a. 提取其 `metadata_section` 子节点的文本内容，并使用 YAML 解析器（例如 `serde_yaml`）进行解析。
+    b. 在一个新的 `automerge` 事务中创建一个新的 map 对象，代表该块。
+    c. 将解析出的 YAML 字段（`id`, `type`, `metadata`）插入到 Automerge map 中。
+    d. `content` 字段被创建为一个 `automerge::Text` 对象，并使用 `content_section` 子节点的文本进行初始化。
+    e. 这个新的块 map 被附加到 Automerge 文档中的顶级 `blocks` 列表中。
+4.  返回最终填充好的 `automerge::AutoCommit` 文档。
+
+## 3. 测试要点 (Testing Points)
+
+- **单元测试 (Unit Tests)**:
+    - **有效文件解析**:
+        - 测试包含单个块、多个块以及嵌套块（通过 `parent` 元数据）的有效 `.elf` 文件。
+        - 验证解析后的 `automerge` 文档结构是否与源文件完全对应。
+    - **无效文件处理**:
+        - **格式错误的 YAML**: 测试元数据部分包含无效 YAML 的文件，验证解析器是否会返回一个可识别的 `Error`。
+        - **缺少必填字段**: 测试缺少 `id` 或 `type` 字段的块，验证是否会返回错误。
+        - **文件编码**: 测试不同编码（如 UTF-16）或包含无效字符的文件，确保解析器不会崩溃。
+    - **边缘情况**:
+        - 测试空文件。解析器应返回一个空的 `automerge` 文档。
+        - 测试只包含分隔符 (`---`) 的文件。
+        - 测试内容部分为空的块。
