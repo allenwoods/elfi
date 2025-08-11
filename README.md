@@ -2,6 +2,15 @@
 
 本文档基于其技术设计文档，对 `elfi` 项目进行概述。它将作为 Gemini/Claude 代理的持久化上下文，以帮助其理解项目的目标、架构和术语。
 
+## 📖 开发者文档
+
+如果你是开发者或贡献者，请查看以下文档：
+
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - 贡献者指南，包含快速开始、项目结构、开发命令等
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - 详细的开发环境配置指南，包括多平台安装说明
+- **[docs/README.md](docs/README.md)** - 文档构建和维护指南
+- **[scripts/README.md](scripts/README.md)** - 自动化脚本使用说明
+
 ## 项目愿景
 
 **`elfi` (Event-sourcing Literate File Interpreter)** 是一种全新的文学化编程范式，围绕 `.elf` 文件格式构建。它从零开始设计，旨在实现原生的、去中心化的协作，以克服现有工具（如 Jupyter Notebooks、LaTeX 和 Org-mode）的局限性。

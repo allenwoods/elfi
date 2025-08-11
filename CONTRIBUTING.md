@@ -1,12 +1,12 @@
-# ELFI: Event-sourcing Literate File Interpreter
+# ELFI 贡献者指南
 
-> 为协作而生的文学化编程新范式
+> 欢迎为 ELFI 项目做出贡献！
 
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-mdbook-brightgreen.svg)](https://your-docs-url)
 
-ELFI 是一个全新的文学化编程解释器，围绕 `.elf` 文件格式构建。它从零开始设计，旨在实现原生的、去中心化的协作，以克服现有工具的局限性。
+感谢你对 ELFI (Event-sourcing Literate File Interpreter) 项目的关注！本指南将帮助你了解如何为项目做出贡献。
 
 ## ✨ 核心特性
 

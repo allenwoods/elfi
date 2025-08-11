@@ -1,91 +1,91 @@
-# ELFI Documentation
+# ELFI 文档
 
-This directory contains the documentation for the ELFI (Event-sourcing Literate File Interpreter) project.
+此目录包含 ELFI (Event-sourcing Literate File Interpreter) 项目的文档。
 
-## Quick Start
+## 快速开始
 
-### For New Developers
+### 新开发者
 
-If you're setting up this project for the first time:
+如果您是第一次设置此项目：
 
 ```bash
-# Option 1: Using just (recommended)
+# 选项 1: 使用 just (推荐)
 just init
 
-# Option 2: Manual setup
+# 选项 2: 手动设置
 cargo install mdbook mdbook-mermaid
 mdbook-mermaid install .
 ```
 
-### Development Commands
+### 开发命令
 
 ```bash
-# Serve documentation locally (auto-reload on changes)
+# 本地启动文档服务 (文件变更时自动重新加载)
 just serve
-# or
+# 或
 mdbook serve --open
 
-# Build documentation
+# 构建文档
 just build
-# or 
+# 或
 mdbook build
 
-# Generate merged markdown
+# 生成合并后的 Markdown 文件
 just merge
-# or
+# 或
 ./merge_markdown.sh
 ```
 
-## Project Structure
+## 项目结构
 
 ```
 docs/
-├── book.toml          # mdbook configuration
-├── Cargo.toml         # Development tool dependencies
-├── justfile           # Task runner (like npm scripts)
-├── src/               # Markdown source files
-│   ├── SUMMARY.md     # Book structure
-│   ├── designs/       # Design documents
-│   ├── implementations/ # Implementation docs
-│   └── example.elf.md # Example files
-├── merge_markdown.sh  # Script to merge all docs
-└── README.md         # This file
+├── book.toml          # mdbook 配置
+├── Cargo.toml         # 开发工具依赖
+├── justfile           # 任务运行器 (类似 npm scripts)
+├── src/               # Markdown 源文件
+│   ├── SUMMARY.md     # 书籍结构
+│   ├── designs/       # 设计文档
+│   ├── implementations/ # 实现文档
+│   └── example.elf.md # 示例文件
+├── merge_markdown.sh  # 用于合并所有文档的脚本
+└── README.md          # 本文件
 ```
 
-## Features
+## 特性
 
-- **Mermaid Diagrams**: Supports mermaid diagrams in markdown
-- **Live Reload**: Auto-refresh during development  
-- **Smart Merge**: Combines all docs into a single file
-- **Code Highlighting**: Syntax highlighting for multiple languages
-- **Cross-references**: Internal links and navigation
+- **Mermaid 图表**: 支持在 markdown 中使用 mermaid 图表
+- **实时重新加载**: 开发过程中自动刷新
+- **智能合并**: 将所有文档合并成一个单独的文件
+- **代码高亮**: 支持多种语言的语法高亮
+- **交叉引用**: 内部链接和导航
 
-## Cargo vs uv Comparison
+## Cargo 与 uv 对比
 
-| Feature | Cargo | uv/Python |
+| 特性 | Cargo | uv/Python |
 |---------|-------|-----------|
-| Dependency file | `Cargo.toml` | `pyproject.toml` |
-| Install deps | `cargo install <tool>` | `uv sync` |
-| Task runner | `just` or `cargo run` | `uv run` |
-| Lock file | `Cargo.lock` | `uv.lock` |
+| 依赖文件 | `Cargo.toml` | `pyproject.toml` |
+| 安装依赖 | `cargo install <tool>` | `uv sync` |
+| 任务运行器 | `just` or `cargo run` | `uv run` |
+| 锁定文件 | `Cargo.lock` | `uv.lock` |
 
-**Key differences:**
-- Cargo tools are typically installed **globally** (`cargo install`)  
-- Python tools are often installed **per-project** (`uv add --dev`)
-- For documentation tools, global installation is usually preferred
+**主要区别：**
+- Cargo 工具通常是**全局**安装的 (`cargo install`)
+- Python 工具通常是**按项目**安装的 (`uv add --dev`)
+- 对于文档工具，通常首选全局安装
 
-## Adding Dependencies
+## 添加依赖
 
-For documentation tools, update the `justfile` or use `cargo-make`:
+对于文档工具，请更新 `justfile` 或使用 `cargo-make`：
 
 ```toml
-# In Cargo.toml - just for documentation
+# 在 Cargo.toml 中 - 仅用于文档
 [package.metadata.docs.tools]
 mdbook = "0.4"
 mdbook-mermaid = "0.15"
 ```
 
-Then run:
+然后运行：
 ```bash
 just install-tools
 ```
