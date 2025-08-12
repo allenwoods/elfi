@@ -4,9 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 # 这是一个虚拟工作空间，只用于管理文档构建工具
-# 类似于 Python 的 pyproject.toml + uv
-
-# 开发依赖 - 用于构建和维护文档
 [dependencies]
 # 这些依赖主要用于文档生成，不是实际的库依赖
 

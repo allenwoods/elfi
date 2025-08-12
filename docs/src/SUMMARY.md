@@ -1,6 +1,8 @@
 # 目录
 
-[引言](./designs/01-motivation.md)
+[引言](./01-motivation.md)
+[快速开始](./02-quickstart.md)
+[命令速查表](./03-cheatsheet.md)
 
 # 架构
 

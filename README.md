@@ -11,6 +11,9 @@
 - **[docs/README.md](docs/README.md)** - 文档构建和维护指南
 - **[scripts/README.md](scripts/README.md)** - 自动化脚本使用说明
 
+**重要笔记：**
+- **文档结构**: 所有需要通过 `mdbook` 编译的文档源文件（`.md` 文件）都**必须**放置在 `docs/src/` 目录下。`docs/src/SUMMARY.md` 文件定义了最终文档的目录结构。
+
 ## 项目愿景
 
 **`elfi` (Event-sourcing Literate File Interpreter)** 是一种全新的文学化编程范式，围绕 `.elf` 文件格式构建。它从零开始设计，旨在实现原生的、去中心化的协作，以克服现有工具（如 Jupyter Notebooks、LaTeX 和 Org-mode）的局限性。
