@@ -9,8 +9,9 @@
 | 一级命令 | 核心职责 | 使用场景 |
 |---------|---------|---------|
 | `open` | 会话管理 | 开始工作、激活文档 |
+| `recipe` | 模式管理 | 设置工作模式、定义行为规则 |
 | `weave` | 结构编辑 | 创建、修改、组织内容 |
-| `tangle` | 输出生成 | 导出代码、渲染文档、执行程序 |
+| `tangle` | 智能纠缠 | 将松散内容纠缠成紧密系统 |
 | `sync` | 协作同步 | 推送/拉取变更、解决冲突 |
 | `log` | 历史追溯 | 查看历史、版本对比、时间旅行 |
 | `validate` | 质量保证 | 语法检查、结构验证、规范检查 |
@@ -31,6 +32,28 @@ elfi open --new my-project            # 创建新文档
 elfi session list                     # 列出活动会话
 elfi session switch <session-id>      # 切换会话
 elfi session close [<session-id>]     # 关闭会话
+```
+
+### 🧩 `elfi recipe` - 模式管理
+
+```bash
+# Recipe 查看与使用
+elfi recipe list                      # 列出所有可用配方
+elfi recipe describe <name>           # 查看配方详细说明
+elfi recipe set <name>                # 设置当前会话配方
+elfi recipe current                   # 查看当前配方
+
+# Recipe 创建与管理
+elfi recipe create <name> --from <template>  # 创建新配方
+elfi recipe edit <name>               # 编辑配方配置
+elfi recipe delete <name>             # 删除配方
+elfi recipe validate <name>           # 验证配方有效性
+
+# 内置配方示例：
+# - conversation-mode: 对话式协作，保留编辑历史
+# - literate-mode: 文学化编程，文档代码并重
+# - auto-complete: 智能补全，自动处理依赖
+# - production-ready: 生产模式，严格验证
 ```
 
 ### ✏️ `elfi weave` - 结构化编辑
@@ -64,28 +87,32 @@ elfi weave unlink <from-id> <to-id>              # 删除链接
 elfi weave depend <block-id> --on <dep-id>       # 声明依赖
 ```
 
-### 🔧 `elfi tangle` - 输出生成
+### 🔧 `elfi tangle` - 智能纠缠
 
 ```bash
-# 导出操作 - 生成文件
+# 导出操作 - 生成源代码文件
 elfi tangle export <block-id> --out <path>       # 导出单块
-elfi tangle export --all --out-dir ./src         # 导出所有
+elfi tangle export --all --out-dir ./src         # 导出所有代码块
 elfi tangle bundle --type <npm|pip|cargo>        # 打包项目
 
 # 执行操作 - 运行代码
 elfi tangle run <block-id> [--env .env]          # 运行代码块
 elfi tangle exec --chain block1,block2,block3    # 链式执行
-elfi tangle test [--pattern "test-*"]            # 运行测试
+elfi tangle test [--pattern "test-*"]            # 运行测试块
 
 # 渲染操作 - 生成文档
 elfi tangle render --format <html|pdf|md>        # 渲染文档
-elfi tangle preview [--port 8080]                # 实时预览
+elfi tangle preview [--port 8080] [--watch]      # 实时预览
 elfi tangle publish --to <gh-pages|netlify>      # 发布文档
 
-# 配方操作 - 自动化流程
-elfi tangle recipe list                          # 列出配方
-elfi tangle recipe new <name> --from template    # 创建配方
-elfi tangle recipe run <name> [--watch]          # 执行配方
+# 智能纠缠 - 内容自动增强
+elfi tangle analyze <block-id>                   # 分析依赖和缺失
+elfi tangle suggest <block-id>                   # 获取改进建议
+elfi tangle complete <block-id> [--interactive]  # 交互式补全
+elfi tangle generate <type> --from <block-id>    # 生成衍生内容
+
+# 配方驱动 - 使用当前 Recipe
+elfi tangle --recipe <name> ...                  # 使用指定配方执行
 ```
 
 ### 🔄 `elfi sync` - 协作同步
@@ -163,46 +190,59 @@ elfi validate report --format <json|html>        # 生成报告
 
 ## 常用工作流
 
-### 1. 创建新项目
+### 1. 协作开发：从想法到代码
 ```bash
-elfi open --new my-project
-elfi weave add --type markdown
-elfi weave edit <block-id>
-elfi tangle render --format html
-```
+# 产品经理：定义需求
+elfi open --new api-project
+elfi recipe set conversation-mode
+elfi weave add --type markdown --tag requirement
 
-### 2. 文学化编程
-```bash
-elfi open project.elf
+# 架构师：设计接口  
+elfi recipe set literate-mode
+elfi weave add --type code --meta language=openapi
+elfi weave link <api-design> <requirement>
+
+# 开发者：实现代码
 elfi weave add --type code --meta language=python
-elfi weave edit <block-id>
-elfi tangle run <block-id>
+elfi tangle analyze <impl-block>     # 分析缺失依赖
+elfi tangle complete <impl-block>    # 智能补全
+
+# 最终生成
 elfi tangle export --all --out-dir ./src
 ```
 
-### 3. 团队协作
+### 2. 文学化编程：文档驱动开发
 ```bash
-elfi sync pull
-elfi weave list --type todo
-elfi weave edit <block-id>
-elfi sync push
+elfi recipe set literate-mode
+elfi weave add --type markdown       # 写说明文档
+elfi weave add --type code          # 写实现代码
+elfi weave link <code> <doc>        # 建立关联
+elfi tangle render --embed-code     # 生成含代码的文档
+elfi tangle export --embed-docs     # 生成含文档的代码
 ```
 
-### 4. 版本管理
+### 3. 智能补全：渐进式完善
 ```bash
-elfi log --limit 10
-elfi log diff HEAD~1 HEAD
-elfi log checkout <version> --to backup/
+elfi tangle analyze                 # 分析整个项目
+elfi tangle suggest <block-id>      # 获取具体建议
+elfi tangle complete --interactive  # 交互式修复
+elfi validate                       # 验证完整性
 ```
 
-### 5. 质量控制
+### 4. 版本管理：时间旅行
 ```bash
-elfi validate
-elfi validate fix
-elfi tangle test
-elfi validate report --format html
+elfi log --limit 10                 # 查看历史
+elfi log diff HEAD~1 HEAD           # 比较版本
+elfi log checkout <version> --to backup/  # 导出历史版本
 ```
 
+### 5. 协作同步：无冲突合并
+```bash
+elfi sync pull                      # 拉取远程变更
+elfi sync conflicts                 # 检查冲突状态
+elfi sync resolve <block> --merge   # 解决冲突
+elfi sync push                      # 推送本地变更
+```
 
 ---
 
