@@ -46,3 +46,126 @@
 
 这种架构使得`.elf`应用可以根据部署环境的需要，灵活地从一个完全离线的单机应用，无缝扩展为一个全球分布式的实时协作平台，而应用层的代码保持不变。
 
+## 3.5. 跨文档同步与Link Block支持
+
+### 3.5.1. 跨文档引用的网络机制
+
+当文档包含Link Block时，Zenoh网络需要处理更复杂的跨文档依赖关系：
+
+#### URI解析与路由
+
+```rust
+// 跨文档引用的解析流程
+async fn resolve_cross_document_reference(uri: &str) -> Result<BlockContent, RefError> {
+    // 1. 解析URI格式 elf://[user/]repo/doc[#block-name]
+    let parsed = parse_elf_uri(uri)?;
+    
+    // 2. 通过Zenoh查询目标文档
+    let doc_key = format!("/elf/docs/{}/{}/{}", parsed.user, parsed.repo, parsed.doc);
+    let query_result = zenoh_session.get(&doc_key).await?;
+    
+    // 3. 在目标文档中查找指定区块
+    if let Some(block_name) = parsed.block_name {
+        return find_block_by_name(&query_result.doc, &block_name);
+    }
+    
+    Ok(query_result.doc)
+}
+```
+
+#### 分布式引用缓存
+
+- **本地缓存**：客户端维护已解析引用的本地缓存，包含目标内容和版本哈希
+- **缓存失效**：通过订阅目标文档的变更通知实现缓存的智能失效
+- **预取策略**：根据引用模式预先获取可能需要的跨文档内容
+
+### 3.5.2. Recipe系统的分布式引用解析
+
+Recipe执行时需要解析其`references`字段中的跨文档引用：
+
+#### 引用解析流程
+
+```yaml
+# Recipe配置中的跨文档引用
+name: "cross-doc-composition"
+references:
+  - source: "elf://my-project/components/shared-utils#helper-functions"
+    target: "shared-code-section"
+    cache_policy: "on_change"
+  - source: "./docs/api#authentication"
+    target: "auth-docs"
+    cache_policy: "always_fresh"
+```
+
+Recipe引擎通过以下步骤处理跨文档引用：
+
+1. **依赖发现**：解析Recipe配置，提取所有跨文档引用
+2. **并行解析**：通过Zenoh并行查询所有依赖的文档
+3. **内容合成**：将解析得到的外部内容整合到当前Recipe的执行上下文中
+4. **版本追踪**：记录所有依赖的版本信息，用于缓存失效判断
+
+### 3.5.3. 引用完整性维护
+
+#### 引用验证机制
+
+系统通过多层机制确保Link Block引用的完整性：
+
+- **创建时验证**：Link Block创建时异步验证目标URI的可达性
+- **变更通知**：目标文档变更时向所有引用者发送通知
+- **定期检查**：后台定期验证长期缓存的引用是否仍然有效
+- **损坏处理**：当引用目标不可达时，标记为损坏状态并在UI中提示
+
+#### 引用更新传播
+
+```mermaid
+sequenceDiagram
+    participant A as 文档A(源文档)
+    participant Z as Zenoh网络
+    participant B as 文档B(目标文档)
+    participant C as 文档C(引用文档A)
+    
+    B->>Z: 发布内容变更
+    Z->>A: 通知目标变更
+    A->>A: 更新Link Block缓存
+    A->>Z: 发布引用更新
+    Z->>C: 通知引用变更
+    C->>C: 重新渲染依赖内容
+```
+
+### 3.5.4. 网络分区与离线处理
+
+#### 网络分区策略
+
+当网络分区导致跨文档引用无法解析时：
+
+- **优雅降级**：使用本地缓存的内容，并在UI中标示为"可能过期"
+- **冲突标记**：网络恢复后检测到引用内容变更时，标记潜在冲突
+- **手动同步**：提供手动触发跨文档同步的机制
+
+#### 离线模式支持
+
+- **依赖预取**：在线时预先下载常用的跨文档依赖
+- **离线创建**：允许离线创建Link Block，但标记为"待验证"
+- **批量同步**：网络恢复时批量验证和更新所有待处理的跨文档引用
+
+### 3.5.5. 网络同步机制实现细节
+
+### 连接建立与发现
+
+多人协作时的网络连接建立过程：
+
+1. **本地发现**：使用mDNS在局域网内自动发现其他elfi实例
+2. **路由连接**：通过Zenoh路由器建立跨网络连接
+3. **P2P直连**：在条件允许时建立点对点连接以降低延迟
+4. **密钥交换**：使用基于身份的加密确保协作安全
+
+### 同步策略与冲突处理
+
+详细的同步机制包括：
+
+- **实时同步**：通过Zenoh订阅机制实现毫秒级变更推送
+- **增量同步**：只传输变更的CRDT操作，最小化网络开销
+- **断网续传**：离线编辑后自动同步所有变更
+- **冲突检测**：基于因果关系的操作排序避免大部分冲突
+- **跨文档一致性**：Link Block的目标变更会触发引用文档的自动更新通知
+

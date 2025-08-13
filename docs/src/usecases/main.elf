@@ -1,0 +1,239 @@
+# 文档即App测试场景 - 主文档
+# 演示跨文档引用和动态内容组合能力
+
+---
+id: 11111111-2222-3333-4444-555555555555
+type: metadata
+name: document-meta
+metadata:
+  title: "Document as App - Main Application"
+  version: "1.0"
+  created: "2024-01-15"
+  purpose: "Demonstrating cross-document references and dynamic composition"
+  dependencies: ["component.elf"]
+---
+
+---
+id: 22222222-3333-4444-5555-666666666666
+type: markdown
+name: intro
+metadata:
+  description: "应用介绍区块"
+  tags: ["introduction", "documentation"]
+---
+# 动态文档应用示例
+
+这是一个展示 `elfi` 文档即App能力的示例项目。通过 Recipe 系统的跨文档引用功能，我们能够将分散在不同 `.elf` 文件中的内容动态组合成一个完整的应用。
+
+## 核心特性
+
+- **跨文档引用**: 引用其他 `.elf` 文件中的区块内容
+- **动态组合**: Recipe 系统实时解析和合成外部内容
+- **模块化设计**: 将功能分散到不同的文档模块中
+- **版本同步**: 引用的内容变更时自动更新
+
+## 架构说明
+
+本项目由以下文档组成：
+- `main.elf`: 主应用文档（当前文档）
+- `component.elf`: 可复用组件库
+
+通过 Recipe 系统，主文档能够引用组件库中的实用工具，实现真正的模块化开发。
+
+---
+id: 33333333-4444-5555-6666-777777777777
+type: link
+name: placeholder-utils
+metadata:
+  description: "占位符区块，将被外部引用替换"
+  tags: ["placeholder", "utils", "link"]
+  replacement_ready: true
+---
+target: elf://my-project/component#reusable-utilities
+ref_type: include
+display_text: 共享工具函数
+description: 这是一个占位符区块，将通过 Recipe 系统被 component.elf 中的实际工具代码替换
+
+---
+id: 44444444-5555-6666-7777-888888888888
+type: markdown
+name: usage-guide
+metadata:
+  description: "使用说明区块"
+  tags: ["guide", "documentation"]
+  parent: 22222222-3333-4444-5555-666666666666
+---
+## 使用说明
+
+### 如何运行这个示例
+
+1. **确保文件存在**: 确认 `component.elf` 文件与本文档在同一项目中
+
+2. **执行 Recipe 导出**:
+   ```bash
+   elfi export --recipe dynamic-composition ./output/
+   ```
+
+3. **查看结果**: 检查生成的 `composed-document.md` 文件
+
+### 预期行为
+
+执行 Recipe 后，`placeholder-utils` 区块应该被 `component.elf` 中 `reusable-utilities` 区块的实际内容替换。生成的文档将包含：
+
+- 本文档的介绍和说明内容
+- 来自 `component.elf` 的实际 Python 工具函数
+- 格式化后的完整文档结构
+
+### 测试动态更新
+
+1. 修改 `component.elf` 中的工具函数
+2. 重新执行 Recipe 导出
+3. 验证变更是否反映在输出中
+
+---
+id: 55555555-6666-7777-8888-999999999999
+type: recipe
+name: dynamic-composition
+metadata:
+  description: "动态内容组合的Recipe配置"
+  tags: ["recipe", "composition", "cross-document"]
+  critical: true
+---
+name: dynamic-composition
+version: "1.0"
+description: "动态组合跨文档内容"
+
+# 跨文档引用配置
+references:
+  - source: "elf://my-project/component#reusable-utilities"
+    target: "placeholder-utils"
+    cache_policy: "on_change"
+    resolve_mode: "eager"
+    template: |
+      ## 共享工具库
+      
+      以下是来自 `component.elf` 的实用工具：
+      
+      ```python
+      {{resolved_content}}
+      ```
+      
+      > **来源**: component.elf → reusable-utilities
+      > **最后更新**: {{last_updated}}
+
+# 选择器：处理所有 markdown 和 link 类型区块
+selector:
+  types: ["markdown", "link"]
+  references: ["placeholder-utils"]
+
+# 转换规则
+transform:
+  - type: "link"
+    action: "resolve_references"
+    recursive: true
+    depends_on: ["placeholder-utils"]
+  - type: "markdown"
+    action: "copy"
+    preserve_format: true
+
+# 错误处理策略
+error_handling:
+  on_missing_reference: "placeholder"
+  on_circular_reference: "error"
+  on_network_failure: "cache"
+  fallback_content: |
+    **[引用内容不可用]**
+    
+    无法加载来自 {{source_uri}} 的内容。可能的原因：
+    - 目标文档不存在
+    - 网络连接问题
+    - 目标区块已被删除
+    
+    请检查引用路径并重试。
+
+# 执行配置
+execution:
+  timeout_ms: 5000
+  max_depth: 3
+  parallel_refs: 2
+  cache_ttl_ms: 300000
+
+# 输出配置
+output:
+  format: "single-file"
+  filename: "composed-document.md"
+  header: |
+    # 动态组合文档
+    
+    > 本文档由 elfi Recipe 系统自动生成
+    > 生成时间: {{timestamp}}
+    > Recipe: {{recipe_name}} v{{recipe_version}}
+    
+  footer: |
+    
+    ---
+    
+    **构建信息**:
+    - 源文档: main.elf
+    - 外部引用: {{reference_count}} 个
+    - 生成时间: {{timestamp}}
+    - Recipe引擎: elfi v{{elfi_version}}
+
+---
+id: 66666666-7777-8888-9999-aaaaaaaaaaaa
+type: markdown
+name: test-scenarios
+metadata:
+  description: "测试场景定义"
+  tags: ["testing", "scenarios"]
+  parent: 44444444-5555-6666-7777-888888888888
+---
+## 测试场景
+
+### 场景1: 正常引用解析
+**目标**: 验证跨文档引用的基本功能
+**步骤**:
+1. 执行 `elfi export --recipe dynamic-composition ./output/`
+2. 检查输出文件是否包含 component.elf 的内容
+3. 验证内容格式是否正确
+
+**成功标准**: 
+- 输出文件存在
+- placeholder-utils 被实际内容替换
+- 格式化模板正确应用
+
+### 场景2: 动态更新测试
+**目标**: 验证外部内容变更时的自动更新
+**步骤**:
+1. 修改 component.elf 中的 reusable-utilities 区块
+2. 重新执行 Recipe 导出
+3. 比较前后输出的差异
+
+**成功标准**:
+- 新输出反映了外部变更
+- 时间戳正确更新
+- 其他内容保持不变
+
+### 场景3: 错误处理测试
+**目标**: 验证各种错误情况的处理
+**步骤**:
+1. 临时重命名 component.elf 文件
+2. 执行 Recipe 导出
+3. 检查错误处理是否符合预期
+
+**成功标准**:
+- Recipe 不会崩溃
+- 显示适当的错误信息或占位符
+- 其他区块正常处理
+
+### 场景4: 循环引用检测
+**目标**: 验证循环引用的检测和处理
+**步骤**:
+1. 在 component.elf 中添加对 main.elf 的引用
+2. 执行 Recipe 导出
+3. 确认系统能够检测并报告循环引用
+
+**成功标准**:
+- 系统检测到循环引用
+- 返回明确的错误信息
+- 不发生无限递归

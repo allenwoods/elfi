@@ -1,0 +1,209 @@
+# 对话即文档测试场景
+# 用于验证 CRDT 实时协作和冲突解决能力
+
+---
+id: 4a5b6c7d-8e9f-1234-5678-90abcdef1234
+type: metadata
+name: document-meta
+metadata:
+  title: "Real-time Collaboration Test Document"
+  version: "1.0"
+  created: "2024-01-15"
+  purpose: "Testing CRDT conflict resolution and real-time sync"
+  participants: ["Client-A", "Client-B", "Client-C"]
+---
+
+---
+id: 5b6c7d8e-9f01-2345-6789-0abcdef12345
+type: markdown
+name: initial-content
+metadata:
+  description: "文档的初始内容，将被并发修改"
+  tags: ["initial", "test", "collaborative"]
+  test_scenario: "baseline"
+---
+# 协作文档测试
+
+Initial content.
+
+这是一个用于测试实时协作的文档。多个客户端会同时对这个文档进行编辑，以验证 CRDT 的冲突解决能力。
+
+---
+id: 6c7d8e9f-0123-4567-89ab-cdef12345678
+type: markdown
+name: test-block-a
+metadata:
+  description: "Client-A 专用的测试区块"
+  tags: ["client-a", "test"]
+  assigned_to: "Client-A"
+---
+## Client-A 的贡献
+
+这是 Client-A 添加的内容区块。这个区块将在测试过程中被 Client-A 修改。
+
+### 测试内容
+- [ ] 添加文本内容
+- [ ] 修改现有内容
+- [ ] 测试并发编辑
+
+---
+id: 7d8e9f01-2345-6789-abcd-ef1234567890
+type: markdown
+name: test-block-b
+metadata:
+  description: "Client-B 专用的测试区块"
+  tags: ["client-b", "test"]
+  assigned_to: "Client-B"
+---
+## Client-B 的贡献
+
+这是 Client-B 添加的内容区块。这个区块将在测试过程中被 Client-B 修改。
+
+### 测试内容
+- [ ] 同步验证测试
+- [ ] 冲突场景测试
+- [ ] 状态收敛验证
+
+---
+id: 8e9f0123-4567-89ab-cdef-123456789012
+type: markdown
+name: conflict-test-area
+metadata:
+  description: "专门用于测试冲突解决的区域"
+  tags: ["conflict", "test", "critical"]
+  concurrent_edit_target: true
+---
+## 冲突测试区域
+
+这个区域将被 Client-A 和 Client-B 同时编辑，用于测试冲突解决机制。
+
+**原始文本**: Initial content for conflict testing.
+
+**测试计划**:
+1. Client-A 将修改为: "My initial content for conflict testing."
+2. Client-B 将修改为: "Our initial content for conflict testing."
+3. 验证 CRDT 合并结果
+
+**预期结果**: 自动合并后的文本应该包含两个客户端的修改，并且最终状态在所有客户端上一致。
+
+---
+id: 9f012345-6789-abcd-ef12-3456789012ab
+type: markdown
+name: collaboration-log
+metadata:
+  description: "协作过程的日志记录"
+  tags: ["log", "tracking"]
+  auto_update: true
+---
+# 协作日志
+
+记录测试过程中的所有协作活动：
+
+## 测试会话记录
+
+### 会话 1: 基础同步测试
+- **时间**: 2024-01-15 10:00:00
+- **参与者**: Client-A, Client-B
+- **操作**: Client-A 添加 test-block-a, Client-B 添加 test-block-b
+- **结果**: ✅ 无冲突，成功同步
+
+### 会话 2: 并发编辑测试
+- **时间**: 2024-01-15 10:05:00
+- **参与者**: Client-A, Client-B
+- **操作**: 同时修改 conflict-test-area 的同一行文本
+- **结果**: 🔄 等待验证
+
+### 会话 3: 多客户端协作
+- **时间**: 2024-01-15 10:10:00
+- **参与者**: Client-A, Client-B, Client-C
+- **操作**: 三方同时编辑不同区块
+- **结果**: 🔄 等待验证
+
+---
+id: 01234567-89ab-cdef-1234-56789012abcd
+type: markdown
+name: verification-checklist
+metadata:
+  description: "测试验证清单"
+  tags: ["verification", "checklist"]
+  critical: true
+---
+# 验证清单
+
+## CRDT 同步验证
+
+### 无冲突编辑
+- [ ] Client-A 和 Client-B 分别编辑不同区块
+- [ ] 所有变更都成功同步到其他客户端
+- [ ] 文档状态在所有客户端上一致（相同的 hash 值）
+
+### 冲突编辑
+- [ ] Client-A 和 Client-B 同时编辑 conflict-test-area
+- [ ] CRDT 自动合并冲突内容
+- [ ] 合并结果符合预期（包含两方的修改）
+- [ ] 所有客户端的文档 hash 值相同
+
+## 性能验证
+- [ ] 同步延迟 < 500ms（本地网络）
+- [ ] 内存使用合理
+- [ ] 无内存泄漏
+
+## 可靠性验证
+- [ ] 网络中断后能够恢复同步
+- [ ] 客户端重启后能够获取完整历史
+- [ ] 并发操作不会导致数据丢失
+
+---
+id: 12345678-9abc-def1-2345-6789012abcde
+type: code
+name: test-script-config
+metadata:
+  language: yaml
+  description: "自动化测试脚本的配置"
+  tags: ["config", "automation"]
+---
+# 对话即文档测试配置
+test_config:
+  name: "conversation-as-document"
+  timeout_ms: 30000
+  
+  participants:
+    - id: "client-a"
+      zenoh_config:
+        endpoints: ["tcp/127.0.0.1:7447"]
+      test_actions:
+        - action: "create_block"
+          target: "test-block-a"
+          timestamp: 1000
+        - action: "edit_content"
+          target: "conflict-test-area"
+          new_text: "My initial content for conflict testing."
+          timestamp: 5000
+          
+    - id: "client-b"
+      zenoh_config:
+        endpoints: ["tcp/127.0.0.1:7447"]
+      test_actions:
+        - action: "create_block"
+          target: "test-block-b"
+          timestamp: 2000
+        - action: "edit_content"
+          target: "conflict-test-area"
+          new_text: "Our initial content for conflict testing."
+          timestamp: 5100
+  
+  verification:
+    - type: "hash_consistency"
+      description: "All clients have same document hash"
+      timeout_ms: 10000
+    - type: "content_merge"
+      description: "Conflict area contains both edits"
+      expected_pattern: "(?=.*My)(?=.*Our).*initial content"
+    - type: "block_count"
+      description: "All blocks are present"
+      expected_count: 7
+
+  zenoh_network:
+    router: "tcp/127.0.0.1:7447"
+    discovery: "multicast"
+    storage_backend: "memory"

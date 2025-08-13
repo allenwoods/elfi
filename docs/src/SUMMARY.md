@@ -6,11 +6,11 @@
 
 # 架构
 
-- [数据建模](./designs/02-data_modeling.md)
-- [存储与同步](./designs/03-storage_sync.md)
-- [Weave API](./designs/04-weave.md)
-- [Tangle API](./designs/05-tangle.md)
-- [解释器](./designs/06-interpreter.md)
+- [数据建模](./designs/01-data_modeling.md)
+- [存储与同步](./designs/02-storage_sync.md)
+- [Weave API](./designs/03-weave.md)
+- [Tangle API](./designs/04-tangle.md)
+- [解释器](./designs/05-interpreter.md)
 
 ---
 
@@ -28,9 +28,6 @@
 - [文档即 App](./usecases/03-document-as-app.md)
 
 ---
-
-# 示例
-- [通用示例](./example.elf.md)
 
 # API 参考
 

@@ -1,0 +1,210 @@
+# ELFI 自举测试文档
+# 用于验证 elfi 可以管理其自身的 Rust 源代码
+
+---
+id: a0b1c2d3-4e5f-6789-abcd-ef0123456789
+type: metadata
+name: document-meta
+metadata:
+  title: "ELFI Development Bootstrapping"
+  version: "1.0"
+  created: "2024-01-15"
+  purpose: "Self-hosting test case for elfi development"
+---
+
+---
+id: b1c2d3e4-5f67-89ab-cdef-0123456789ab
+type: code
+name: dev-block-rust
+metadata:
+  language: rust
+  description: "核心的 Rust 代码，用于验证自举能力"
+  tags: ["rust", "core", "bootstrap"]
+  export_path: "src/bootstrapped_code.rs"
+  owner: "dev-team"
+---
+// ELFI bootstrapped code module
+// This code is managed and exported from elfi-dev.elf
+
+use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+
+/// 文档操作历史的核心数据结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OperationLog {
+    pub id: String,
+    pub timestamp: u64,
+    pub author: String,
+    pub operation_type: String,
+    pub content: String,
+}
+
+/// 简单的内存中操作历史管理器
+pub struct HistoryManager {
+    operations: Vec<OperationLog>,
+    index: HashMap<String, usize>,
+}
+
+impl HistoryManager {
+    /// 创建新的历史管理器实例
+    pub fn new() -> Self {
+        Self {
+            operations: Vec::new(),
+            index: HashMap::new(),
+        }
+    }
+    
+    /// 添加新的操作记录
+    pub fn add_operation(&mut self, op: OperationLog) {
+        let position = self.operations.len();
+        self.index.insert(op.id.clone(), position);
+        self.operations.push(op);
+        // This is a test comment.
+    }
+    
+    /// 根据ID获取操作记录
+    pub fn get_operation(&self, id: &str) -> Option<&OperationLog> {
+        self.index.get(id)
+            .and_then(|&idx| self.operations.get(idx))
+    }
+    
+    /// 获取所有操作历史
+    pub fn get_all_operations(&self) -> &[OperationLog] {
+        &self.operations
+    }
+}
+
+impl Default for HistoryManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_history_manager_basic_operations() {
+        let mut manager = HistoryManager::new();
+        
+        let op = OperationLog {
+            id: "test-op-001".to_string(),
+            timestamp: 1705123200,
+            author: "test-user".to_string(),
+            operation_type: "create_block".to_string(),
+            content: "Test content".to_string(),
+        };
+        
+        manager.add_operation(op.clone());
+        
+        let retrieved = manager.get_operation("test-op-001");
+        assert!(retrieved.is_some());
+        assert_eq!(retrieved.unwrap().content, "Test content");
+        
+        assert_eq!(manager.get_all_operations().len(), 1);
+    }
+}
+
+---
+id: c2d3e4f5-6789-abcd-ef01-23456789abcd
+type: recipe
+name: code-export-recipe
+metadata:
+  description: "用于导出 Rust 代码区块的Recipe配置"
+  tags: ["recipe", "export", "rust"]
+---
+name: code-export-recipe
+version: "1.0"
+description: "导出 Rust 代码区块到文件系统"
+
+# 选择器：只处理 code 类型的区块
+selector:
+  types: ["code"]
+  names: ["dev-block-rust"]
+  metadata:
+    language: "rust"
+
+# 转换规则：保持原有格式
+transform:
+  - type: "code"
+    action: "copy"
+    preserve_format: true
+    add_header: |
+      // This file was automatically generated from elfi-dev.elf
+      // Do not edit directly - make changes in the .elf file instead
+
+# 输出配置
+output:
+  format: "file-per-block"
+  base_path: "src/"
+  filename_mapping:
+    "dev-block-rust": "bootstrapped_code.rs"
+  create_directories: true
+
+---
+id: d3e4f567-89ab-cdef-0123-456789abcdef
+type: markdown
+name: test-documentation
+metadata:
+  description: "自举测试的说明文档"
+  tags: ["documentation", "test"]
+---
+# 自举测试说明
+
+这个文档用于验证 `elfi` 的自举能力，即用 `elfi` 本身来管理 `elfi` 的源代码。
+
+## 测试目标
+
+1. **代码管理**: 在 `.elf` 文件中维护 Rust 源代码
+2. **Recipe导出**: 使用 Recipe 系统将代码导出到文件系统
+3. **编译验证**: 确保导出的代码能够正常编译和测试
+4. **双向同步**: 验证 IDE 中的修改能够同步回 `.elf` 文件
+
+## 当前状态
+
+- ✅ 创建了包含真实 Rust 代码的 `dev-block-rust` 区块
+- ✅ 配置了 `code-export-recipe` Recipe 用于代码导出
+- 🔄 等待测试执行和验证
+
+## 使用方式
+
+```bash
+# 导出代码到文件系统
+elfi export --recipe code-export-recipe ./src/
+
+# 验证编译
+cargo test
+
+# 启动双向同步（可选）
+elfi watch --project elfi-dev --export-dir ./src/
+```
+
+---
+id: e4f56789-abcd-ef01-2345-6789abcdef01
+type: markdown
+name: changelog
+metadata:
+  description: "测试过程中的变更日志"
+  tags: ["changelog", "test"]
+  parent: d3e4f567-89ab-cdef-0123-456789abcdef
+---
+# 变更日志
+
+记录自举测试过程中的所有修改和观察：
+
+## 2024-01-15
+
+- **初始创建**: 创建了 `elfi-dev.elf` 测试文档
+- **代码区块**: 添加了包含 `HistoryManager` 实现的 Rust 代码
+- **Recipe配置**: 配置了代码导出的 Recipe 规则
+- **测试注释**: 在 `add_operation` 方法中添加了测试注释
+- **格式修正**: 修正了区块分隔符，使用标准 UUID 格式
+
+## 待完成项目
+
+- [ ] 执行 Recipe 导出测试
+- [ ] 验证生成的 `src/bootstrapped_code.rs` 文件
+- [ ] 运行 `cargo test` 验证编译
+- [ ] 测试双向同步功能
+- [ ] 记录性能和稳定性观察

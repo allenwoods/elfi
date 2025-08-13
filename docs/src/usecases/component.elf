@@ -1,0 +1,246 @@
+# 文档即App测试场景 - 组件库
+# 可复用的工具和组件集合
+
+---
+id: f47ac10b-58cc-4372-a567-0e02b2c3d479
+type: metadata
+name: document-meta
+metadata:
+  title: "Document as App - Component Library"
+  version: "1.0"
+  created: "2024-01-15"
+  purpose: "Reusable components and utilities for cross-document references"
+  exports: ["reusable-utilities", "data-structures"]
+---
+
+---
+id: a1b2c3d4-5e6f-7890-1234-56789abcdef0
+type: code
+name: reusable-utilities
+metadata:
+  language: python
+  description: "Python工具函数库，可被其他文档引用"
+  tags: ["python", "utilities", "reusable", "export"]
+  version: "1.2"
+  last_updated: "2024-01-15T10:30:00Z"
+  export_ready: true
+---
+"""
+ELFI Component Library - Reusable Utilities
+
+This module contains reusable utility functions that can be referenced
+by other .elf documents through the Recipe system.
+"""
+
+import json
+import hashlib
+from typing import Dict, List, Any, Optional
+from datetime import datetime
+
+
+def calculate_sum(a: float, b: float) -> float:
+    """Calculate the sum of two numbers.
+    
+    Args:
+        a: First number
+        b: Second number
+        
+    Returns:
+        The sum of a and b
+    """
+    return a + b
+
+
+def format_message(name: str, greeting: str = "Hello") -> str:
+    """Format a greeting message.
+    
+    Args:
+        name: Name to greet
+        greeting: Greeting phrase (default: "Hello")
+        
+    Returns:
+        Formatted greeting message
+    """
+    return f"{greeting} from {name}!"
+
+
+def hash_content(content: str, algorithm: str = "sha256") -> str:
+    """Generate hash for content.
+    
+    Args:
+        content: Content to hash
+        algorithm: Hash algorithm to use
+        
+    Returns:
+        Hex digest of the hash
+    """
+    hasher = hashlib.new(algorithm)
+    hasher.update(content.encode('utf-8'))
+    return hasher.hexdigest()
+
+
+def validate_uri_format(uri: str) -> bool:
+    """Validate ELF URI format.
+    
+    Args:
+        uri: URI to validate
+        
+    Returns:
+        True if URI format is valid
+    """
+    # Basic validation for elf://[user/]repo/doc[#block-name] format
+    if not uri.startswith('elf://'):
+        return False
+    
+    path = uri[6:]  # Remove 'elf://' prefix
+    parts = path.split('/')
+    
+    # Minimum required parts: repo/doc
+    if len(parts) < 2:
+        return False
+    
+    # Maximum parts: user/repo/doc/block-name
+    if len(parts) > 4:
+        return False
+    
+    return True
+
+
+def create_recipe_context(references: List[str]) -> Dict[str, Any]:
+    """Create execution context for Recipe processing.
+    
+    Args:
+        references: List of reference URIs
+        
+    Returns:
+        Recipe execution context
+    """
+    context = {
+        'timestamp': datetime.now().isoformat(),
+        'reference_count': len(references),
+        'resolved_refs': {},
+        'errors': [],
+        'cache_hits': 0,
+    }
+    
+    for ref in references:
+        if validate_uri_format(ref):
+            context['resolved_refs'][ref] = {
+                'status': 'pending',
+                'content': None,
+                'last_fetched': None,
+            }
+        else:
+            context['errors'].append(f"Invalid URI format: {ref}")
+    
+    return context
+
+---
+id: 2e8f9a3b-1c4d-5a6b-7c8d-9e0f1a2b3c4d
+type: code
+name: data-structures
+metadata:
+  language: python
+  description: "常用数据结构实现"
+  tags: ["python", "data-structures", "algorithms"]
+  parent: a1b2c3d4-5e6f-7890-1234-56789abcdef0
+---
+"""
+Common Data Structures for ELF Document Processing
+"""
+
+from typing import Generic, TypeVar, Optional, List
+from dataclasses import dataclass
+from enum import Enum
+
+T = TypeVar('T')
+
+
+class BlockType(Enum):
+    """ELF Block types enumeration."""
+    MARKDOWN = "markdown"
+    CODE = "code"
+    RECIPE = "recipe"
+    LINK = "link"
+
+
+@dataclass
+class BlockMetadata:
+    """Block metadata structure."""
+    description: str
+    tags: List[str]
+    version: Optional[str] = None
+    parent: Optional[str] = None
+
+
+@dataclass
+class Block:
+    """ELF Document Block."""
+    id: str
+    name: str
+    block_type: BlockType
+    content: str
+    metadata: BlockMetadata
+    
+    def get_hash(self) -> str:
+        """Calculate block content hash."""
+        from .reusable_utilities import hash_content
+        content_str = f"{self.id}{self.name}{self.block_type.value}{self.content}"
+        return hash_content(content_str)[:8]
+
+---
+id: 3f9a8b2c-7d6e-4f5a-8b9c-0d1e2f3a4b5c
+type: markdown
+name: component-documentation
+metadata:
+  description: "组件库使用文档"
+  tags: ["documentation", "api", "examples"]
+---
+# 组件库使用指南
+
+本组件库提供了一组可复用的 Python 工具和数据结构，专门用于 ELF 文档处理和跨文档引用。
+
+## 可用组件
+
+### 1. reusable-utilities
+通用工具函数集合，包含：
+- **数学工具**: `calculate_sum()` - 数值计算
+- **字符串工具**: `format_message()` - 消息格式化
+- **哈希工具**: `hash_content()` - 内容哈希计算
+- **URI工具**: `validate_uri_format()` - URI 格式验证
+- **Recipe工具**: `create_recipe_context()` - Recipe 执行支持
+
+### 2. data-structures
+核心数据结构定义：
+- **BlockType**: 区块类型枚举
+- **BlockMetadata**: 区块元数据结构
+- **Block**: 完整区块定义
+
+## 使用示例
+
+### 在其他文档中引用
+```yaml
+# Recipe 配置示例
+references:
+  - source: "elf://my-project/component#reusable-utilities"
+    target: "utils-section"
+    template: |
+      ```python
+      {{resolved_content}}
+      ```
+```
+
+## 版本历史
+
+### v1.2 (当前版本)
+- 增加了 Recipe 执行上下文支持
+- 优化了 URI 验证逻辑
+- 修正了区块分隔符格式
+
+### v1.1
+- 添加了数据结构和算法模块
+- 实现了循环引用检测
+
+### v1.0
+- 基础工具函数
+- 简单的字符串和数值处理

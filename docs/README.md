@@ -42,13 +42,11 @@ just merge
 docs/
 ├── book.toml          # mdbook 配置
 ├── Cargo.toml         # 开发工具依赖
-├── justfile           # 任务运行器 (类似 npm scripts)
+├── justfile           # 任务运行器
 ├── src/               # Markdown 源文件
 │   ├── SUMMARY.md     # 书籍结构
 │   ├── designs/       # 设计文档
 │   ├── implementations/ # 实现文档
-│   └── example.elf.md # 示例文件
-├── merge_markdown.sh  # 用于合并所有文档的脚本
 └── README.md          # 本文件
 ```
 

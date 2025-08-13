@@ -4,6 +4,18 @@
 
 - **核心目标**: 证明多个用户可以并发地对同一个文档进行编辑，即使在出现冲突的情况下，所有用户的文档状态最终也能自动、正确地收敛到完全一致的状态。
 
+## 📁 关联的测试文件
+
+**[conversation.elf](./conversation.elf)** - 实时协作测试的完整 `.elf` 文档
+
+这个文件包含了协作测试的所有组件：
+- `initial-content`: 基础内容区块，用于并发修改测试
+- `test-block-a` 和 `test-block-b`: 分别为 Client-A 和 Client-B 准备的测试区块
+- `conflict-test-area`: 专门用于测试冲突解决的区域
+- `collaboration-log`: 协作过程的详细日志记录
+- `verification-checklist`: 测试验证清单
+- `test-script-config`: 自动化测试的配置信息
+
 ## 关联的实现文档
 
 - `implementations/02-core_logic.md`: 描述了 `Repo`、`DocHandle` 以及本地/远程变更的工作流程。
