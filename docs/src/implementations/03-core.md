@@ -1,546 +1,448 @@
-# 核心功能模块 - Main 接口与共享组件
+# 核心功能模块实现策略
 
-本文档详述 ELFI 核心模块的实现，包括统一的 Main 类接口、会话管理、文档管理以及被 Weave 和 Tangle 层共同使用的核心功能。
+本文档阐述 ELFI 核心模块的实现策略，包括统一 Main 接口设计、会话管理策略、文档管理策略以及被 Weave 和 Tangle 层共同使用的核心功能架构。
 
 ## 1. Main 类统一接口设计
 
-### 1.1. 设计理念
+### 1.1. 设计理念和架构决策
 
-Main 类是 ELFI 系统的统一入口点，为所有上层封装（CLI、FFI、WASM）提供一致的接口：
+**核心问题**：如何设计一个统一的接口层，既支持多语言绑定，又保持高性能和良好的用户体验？
 
-- **接口统一性**：所有功能通过 Main 类暴露，确保多语言绑定的一致性
-- **异步优先**：所有网络和 I/O 操作采用异步设计
+**设计原则**：
+- **接口统一性**：所有功能通过 Main 类暴露，确保 CLI、FFI、WASM 等封装的一致性
+- **异步优先**：所有网络和 I/O 操作采用异步设计，避免阻塞
 - **错误透明**：提供详细的错误信息和用户友好的建议
 - **状态管理**：管理文档生命周期和网络会话状态
 
-### 1.2. Main 类核心结构
+**架构决策对比**：
 
+| 设计方案 | 优势 | 劣势 | 选择理由 |
+|----------|------|------|----------|
+| **统一 Main 类** | 接口一致、易于绑定 | 单一职责可能过重 | 多语言绑定需求优先 |
+| **分模块接口** | 职责清晰、扩展灵活 | 绑定复杂、一致性难保证 | 不符合简化目标 |
+| **Facade 模式** | 隐藏复杂性、接口简洁 | 可能限制高级功能 | 适合大部分用例 |
+
+### 1.2. Main 类架构策略
+
+**组件组合设计**：
+
+```mermaid
+graph TB
+    A[Main 统一接口] --> B[SessionManager]
+    A --> C[DocumentManager]
+    A --> D[RecipeEngine]
+    A --> E[CacheManager]
+    A --> F[SystemMetrics]
+    
+    B --> B1[Zenoh 网络会话]
+    B --> B2[对等节点发现]
+    B --> B3[加密管理]
+    
+    C --> C1[文档生命周期]
+    C --> C2[实时同步]
+    C --> C3[冲突解决]
+    
+    D --> D1[跨文档引用]
+    D --> D2[内容转换]
+    D --> D3[模板引擎]
+    
+    E --> E1[L1 内存缓存]
+    E --> E2[L2 磁盘缓存]
+    E --> E3[L3 网络缓存]
+    
+    style A fill:#e1f5fe
+    style B fill:#fff3e0
+    style C fill:#c8e6c9
+    style D fill:#ffecb3
+    style E fill:#f3e5f5
+    style F fill:#e8f5e8
+```
+
+**核心组件职责分工**：
+
+| 组件 | 主要职责 | 实现策略 | 性能考量 |
+|------|----------|----------|----------|
+| **SessionManager** | Zenoh 网络管理 | 连接池 + 自动重连 | 连接复用、异步IO |
+| **DocumentManager** | 文档生命周期 | 懒加载 + 智能卸载 | 内存管理、缓存策略 |
+| **RecipeEngine** | 内容转换处理 | 并行处理 + 依赖解析 | 任务队列、资源限制 |
+| **CacheManager** | 多级缓存管理 | LRU + TTL 策略 | 命中率优化、内存控制 |
+| **SystemMetrics** | 性能指标收集 | 原子操作 + 移动平均 | 低开销、实时统计 |
+
+**初始化策略设计**（详细实现见 API 文档）：
 ```rust
-// core/src/main.rs
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use dashmap::DashMap;
-
-pub struct Main {
-    /// Zenoh 网络会话管理器
-    session_manager: Arc<SessionManager>,
-    /// 文档生命周期管理器
-    document_manager: Arc<DocumentManager>,
-    /// Recipe 执行引擎
-    recipe_engine: Arc<RecipeEngine>,
-    /// 多级缓存管理器
-    cache_manager: Arc<CacheManager>,
-    /// 活跃的文档句柄
-    active_documents: Arc<DashMap<String, Arc<DocumentHandle>>>,
-    /// 配置信息
-    config: Arc<ElfiConfig>,
-    /// 系统指标收集器
-    metrics: Arc<SystemMetrics>,
-}
-
-impl Main {
-    /// 创建新的 Main 实例
-    pub async fn new(config: ElfiConfig) -> Result<Self, ElfiError> {
-        // 初始化 Zenoh 网络会话
-        let session_manager = Arc::new(
-            SessionManager::new(&config.network).await?
-        );
-        
-        // 初始化缓存管理器
-        let cache_manager = Arc::new(
-            CacheManager::new(&config.cache).await?
-        );
-        
-        // 初始化文档管理器
-        let document_manager = Arc::new(
-            DocumentManager::new(session_manager.clone(), cache_manager.clone()).await?
-        );
-        
-        // 初始化 Recipe 引擎
-        let recipe_engine = Arc::new(
-            RecipeEngine::new(session_manager.clone(), document_manager.clone()).await?
-        );
-        
-        let metrics = Arc::new(SystemMetrics::new());
-        
-        Ok(Self {
-            session_manager,
-            document_manager,
-            recipe_engine,
-            cache_manager,
-            active_documents: Arc::new(DashMap::new()),
-            config: Arc::new(config),
-            metrics,
-        })
-    }
+// 核心初始化流程接口
+interface MainInitialization {
+    async fn initialize_network_session(config: &NetworkConfig) -> SessionManager;
+    async fn setup_document_management(session: SessionManager) -> DocumentManager;
+    async fn configure_caching_strategy(config: &CacheConfig) -> CacheManager;
+    async fn integrate_components() -> Main;
 }
 ```
 
-### 1.3. 文档管理接口
+### 1.3. 文档管理接口策略
 
+**文档生命周期管理流程**：
+
+```mermaid
+flowchart TD
+    A[文档请求] --> B{已打开?}
+    B -->|是| C[返回现有句柄]
+    B -->|否| D[解析 URI]
+    D --> E{缓存中存在?}
+    E -->|是| F[从缓存加载]
+    E -->|否| G[从网络重建]
+    F --> H[创建句柄]
+    G --> H
+    H --> I[注册活跃文档]
+    I --> J[启动实时同步]
+    J --> K[返回句柄]
+    
+    style A fill:#e1f5fe
+    style K fill:#c8e6c9
+    style G fill:#fff3e0
+```
+
+**核心接口设计策略**：
+
+| 操作类型 | 实现策略 | 性能优化 | 错误处理 |
+|----------|----------|----------|----------|
+| **文档打开** | 缓存优先 + 懒加载 | 连接复用、并行加载 | 渐进式失败、备用方案 |
+| **文档创建** | 立即持久化 + 网络发布 | 批量操作、异步写入 | 事务回滚、一致性保证 |
+| **文档关闭** | 优雅关闭 + 资源清理 | 延迟清理、内存优化 | 强制关闭、资源泄漏防护 |
+| **状态同步** | 增量更新 + 冲突解决 | 差量传输、智能合并 | 冲突标记、手动介入 |
+
+**文档句柄管理策略**：
+
+```mermaid
+graph TB
+    A[DocumentHandle] --> B[文档状态]
+    A --> C[操作队列]
+    A --> D[同步管理]
+    A --> E[事件回调]
+    
+    B --> B1[CRDT 文档]
+    B --> B2[本地修改]
+    B --> B3[冲突信息]
+    
+    C --> C1[待发送操作]
+    C --> C2[重试队列]
+    C --> C3[优先级排序]
+    
+    D --> D1[实时订阅]
+    D --> D2[历史同步]
+    D --> D3[网络状态]
+    
+    E --> E1[内容变更]
+    E --> E2[冲突检测]
+    E --> E3[同步状态]
+    
+    style A fill:#e1f5fe
+    style B fill:#c8e6c9
+    style C fill:#fff3e0
+    style D fill:#ffecb3
+    style E fill:#f3e5f5
+```
+
+**关键设计决策**：
+- **句柄复用**：相同 URI 的文档共享句柄，减少内存开销
+- **操作队列**：异步操作队列确保操作顺序和错误恢复
+- **智能缓存**：基于访问模式的缓存策略，平衡内存和性能
+- **监控集成**：内置指标收集，支持性能分析和问题诊断
+
+### 1.4. 内容操作接口策略
+
+**CRDT 操作映射策略**：
+
+```mermaid
+graph TB
+    A[用户操作] --> B[Main 接口]
+    B --> C[DocumentHandle]
+    C --> D[CRDT Operations]
+    D --> E[Zenoh 网络]
+    
+    subgraph "操作类型"
+        F1[AddBlock]
+        F2[DeleteBlock]
+        F3[UpdateContent]
+        F4[MoveBlock]
+        F5[UpdateMetadata]
+    end
+    
+    subgraph "同步策略"
+        G1[本地立即应用]
+        G2[异步网络发布]
+        G3[冲突检测与解决]
+    end
+    
+    D --> F1
+    D --> F2
+    D --> F3
+    D --> F4
+    D --> F5
+    
+    E --> G1
+    E --> G2
+    E --> G3
+    
+    style A fill:#e1f5fe
+    style D fill:#c8e6c9
+    style E fill:#fff3e0
+```
+
+**内容操作设计原则**：
+
+| 操作类型 | 实现策略 | 冲突处理 | 性能优化 |
+|----------|----------|----------|----------|
+| **添加块** | UUID 生成 + 默认内容 | 不可能冲突 | 批量添加、模板初始化 |
+| **删除块** | 软删除 + 标记 | Last-Write-Wins | 延迟清理、垃圾回收 |
+| **内容更新** | 差量操作 + Text CRDT | 语义合并 | 增量传输、密集合并 |
+| **结构移动** | 父子关系修改 | 规则优先级 | 原子操作、最小影响 |
+| **元数据编辑** | 结构化合并 | 字段级合并 | 模式验证、缓存失效 |
+
+**操作驱动的设计模式**：
+- **操作原子性**：每个用户操作对应一个或多个原子 CRDT 操作
+- **乐观并发**：本地立即应用，网络异步同步，冲突后续处理
+- **操作幂等性**：相同操作多次执行结果一致，支持网络重试
+- **语义保证**：操作顺序可能改变，但语义意图得到保留
+
+**核心接口设计**（详细实现见 API 文档）：
 ```rust
-impl Main {
-    /// 打开或创建文档
-    pub async fn open(&self, uri: &str) -> Result<DocumentHandle, ElfiError> {
-        let start_time = std::time::Instant::now();
-        
-        // 检查是否已经打开
-        if let Some(handle) = self.active_documents.get(uri) {
-            return Ok(handle.clone());
-        }
-        
-        // 解析 URI
-        let parsed_uri = ElfUri::parse(uri)?;
-        
-        // 通过文档管理器打开文档
-        let document = self.document_manager.open_document(&parsed_uri).await?;
-        
-        // 创建文档句柄
-        let handle = Arc::new(DocumentHandle::new(
-            document,
-            self.session_manager.clone(),
-            self.recipe_engine.clone(),
-        ));
-        
-        // 注册到活跃文档列表
-        self.active_documents.insert(uri.to_string(), handle.clone());
-        
-        // 记录指标
-        self.metrics.record_operation(
-            MetricOperation::DocumentOpen,
-            start_time.elapsed(),
-        );
-        
-        tracing::info!("文档已打开: {} (耗时: {:?})", uri, start_time.elapsed());
-        
-        Ok(handle)
-    }
-    
-    /// 创建新文档
-    pub async fn create(&self, config: CreateConfig) -> Result<DocumentHandle, ElfiError> {
-        let document_id = uuid::Uuid::new_v4().to_string();
-        let uri = format!("elf://{}/{}", config.repo, config.document_name);
-        
-        // 创建初始文档结构
-        let mut initial_doc = ElfiDocument::new(DocumentMetadata {
-            id: document_id,
-            title: config.title,
-            created_at: chrono::Utc::now(),
-            last_modified: chrono::Utc::now(),
-            authors: vec![config.author.unwrap_or_else(|| "anonymous".to_string())],
-            version: "0.1.0".to_string(),
-        });
-        
-        // 添加初始元数据块
-        if config.add_metadata_block {
-            let metadata_block = Block {
-                id: uuid::Uuid::new_v4(),
-                name: Some("document-metadata".to_string()),
-                block_type: BlockType::Metadata,
-                content: BlockContent::Structured(serde_json::json!({
-                    "title": config.title,
-                    "created": chrono::Utc::now(),
-                    "purpose": config.purpose,
-                })),
-                metadata: BlockMetadata::default(),
-            };
-            initial_doc.add_block(metadata_block)?;
-        }
-        
-        // 通过文档管理器持久化
-        let document = self.document_manager.create_document(&uri, initial_doc).await?;
-        
-        // 创建句柄
-        let handle = Arc::new(DocumentHandle::new(
-            document,
-            self.session_manager.clone(),
-            self.recipe_engine.clone(),
-        ));
-        
-        self.active_documents.insert(uri.clone(), handle.clone());
-        
-        tracing::info!("新文档已创建: {}", uri);
-        
-        Ok(handle)
-    }
-    
-    /// 关闭文档
-    pub async fn close(&self, uri: &str) -> Result<(), ElfiError> {
-        if let Some((_, handle)) = self.active_documents.remove(uri) {
-            // 等待所有未完成的操作
-            handle.flush().await?;
-            
-            // 通知文档管理器
-            self.document_manager.close_document(uri).await?;
-            
-            tracing::info!("文档已关闭: {}", uri);
-        }
-        
-        Ok(())
-    }
+// 内容操作统一接口
+interface ContentOperations {
+    async fn add_block(doc_uri: &str, block_type: BlockType, init_options: BlockInitOptions) -> BlockId;
+    async fn delete_block(doc_uri: &str, block_id: &str, deletion_policy: DeletionPolicy) -> ();
+    async fn update_content(doc_uri: &str, block_id: &str, content_delta: ContentDelta) -> ();
+    async fn move_block(doc_uri: &str, block_id: &str, target_parent: Option<&str>) -> ();
+    async fn batch_operations(doc_uri: &str, operations: Vec<Operation>) -> BatchResult;
 }
 ```
 
-### 1.4. 内容操作接口
+### 1.5. 协作功能接口策略
 
+**分布式协作架构**：
+
+```mermaid
+graph TB
+    A[本地用户] --> B[CRDT 文档]
+    C[远程用户 1] --> D[CRDT 文档]
+    E[远程用户 2] --> F[CRDT 文档]
+    
+    B --> G[Zenoh 网络]
+    D --> G
+    F --> G
+    
+    G --> H[实时同步]
+    G --> I[历史同步]
+    G --> J[冲突检测]
+    
+    H --> K[自动合并]
+    I --> L[状态重建]
+    J --> M[手动解决]
+    
+    style G fill:#e1f5fe
+    style K fill:#c8e6c9
+    style M fill:#fff3e0
+```
+
+**协作策略分层设计**：
+
+| 协作层级 | 实现策略 | 冲突解决 | 性能特点 |
+|----------|----------|----------|----------|
+| **实时同步** | 事件驱动 + 自动合并 | CRDT 自动处理 | 低延迟 (< 100ms) |
+| **历史同步** | 量化查询 + 按需加载 | 操作日志重放 | 高吞吐量 |
+| **所有权管理** | 乐观锁 + 分布式一致性 | 最后写入者获胜 | 支持冲突解决 |
+| **网络分区** | 离线编辑 + 重连同步 | 向量时钟合并 | 弹性恢复 |
+
+**协作流程策略**：
+
+```mermaid
+sequenceDiagram
+    participant U1 as 用户 A
+    participant D1 as 文档 A
+    participant N as Zenoh 网络
+    participant D2 as 文档 B
+    participant U2 as 用户 B
+    
+    U1->>D1: 编辑操作
+    D1->>D1: 本地应用
+    D1->>N: 发布操作
+    N->>D2: 转发操作
+    D2->>D2: 应用操作
+    
+    Note over D2: 检测到冲突
+    D2->>D2: CRDT 自动合并
+    
+    alt 需要手动干预
+        D2->>U2: 冲突通知
+        U2->>D2: 解决决策
+        D2->>N: 发布解决结果
+    end
+    
+    D2->>U2: 更新 UI
+```
+
+**所有权管理策略**：
+- **乐观锁机制**：允许并发编辑，冲突时才加锁
+- **分级所有权**：文档级 > 块级 > 字段级权限管理
+- **权限传递**：支持所有权转移和授权机制
+- **容错设计**：网络分区时的所有权冲突处理
+
+**核心接口设计**（详细实现见 API 文档）：
 ```rust
-impl Main {
-    /// 添加新区块
-    pub async fn add_block(
-        &self,
-        doc_uri: &str,
-        block_type: BlockType,
-        name: Option<String>
-    ) -> Result<String, ElfiError> {
-        let handle = self.active_documents
-            .get(doc_uri)
-            .ok_or_else(|| ElfiError::DocumentNotOpen(doc_uri.to_string()))?;
-        
-        let block_id = uuid::Uuid::new_v4();
-        let block = Block {
-            id: block_id,
-            name: name.clone(),
-            block_type: block_type.clone(),
-            content: Self::default_content_for_type(&block_type),
-            metadata: BlockMetadata::default(),
-        };
-        
-        handle.add_block(block).await?;
-        
-        tracing::info!("新区块已添加: {} (类型: {:?}, 名称: {:?})", 
-            &block_id.to_string()[..8], block_type, name);
-        
-        Ok(block_id.to_string())
-    }
-    
-    /// 删除区块
-    pub async fn delete_block(
-        &self,
-        doc_uri: &str,
-        block_id: &str
-    ) -> Result<(), ElfiError> {
-        let handle = self.active_documents
-            .get(doc_uri)
-            .ok_or_else(|| ElfiError::DocumentNotOpen(doc_uri.to_string()))?;
-        
-        let uuid = uuid::Uuid::parse_str(block_id)
-            .map_err(|_| ElfiError::InvalidBlockId(block_id.to_string()))?;
-        
-        handle.delete_block(&uuid).await?;
-        
-        tracing::info!("区块已删除: {}", &block_id[..8]);
-        
-        Ok(())
-    }
-    
-    /// 修改区块内容
-    pub async fn update_block_content(
-        &self,
-        doc_uri: &str,
-        block_id: &str,
-        content: BlockContent
-    ) -> Result<(), ElfiError> {
-        let handle = self.active_documents
-            .get(doc_uri)
-            .ok_or_else(|| ElfiError::DocumentNotOpen(doc_uri.to_string()))?;
-        
-        let uuid = uuid::Uuid::parse_str(block_id)
-            .map_err(|_| ElfiError::InvalidBlockId(block_id.to_string()))?;
-        
-        handle.update_content(&uuid, content).await?;
-        
-        Ok(())
-    }
-    
-    /// 移动区块（修改 parent 关系）
-    pub async fn move_block(
-        &self,
-        doc_uri: &str,
-        block_id: &str,
-        new_parent: Option<String>
-    ) -> Result<(), ElfiError> {
-        let handle = self.active_documents
-            .get(doc_uri)
-            .ok_or_else(|| ElfiError::DocumentNotOpen(doc_uri.to_string()))?;
-        
-        let uuid = uuid::Uuid::parse_str(block_id)
-            .map_err(|_| ElfiError::InvalidBlockId(block_id.to_string()))?;
-        
-        let parent_uuid = if let Some(parent_id) = new_parent {
-            Some(uuid::Uuid::parse_str(&parent_id)
-                .map_err(|_| ElfiError::InvalidBlockId(parent_id))?)
-        } else {
-            None
-        };
-        
-        handle.move_block(&uuid, parent_uuid).await?;
-        
-        tracing::info!("区块已移动: {} -> {:?}", 
-            &block_id[..8], parent_uuid.map(|id| &id.to_string()[..8]));
-        
-        Ok(())
-    }
+// 协作功能统一接口
+interface CollaborationOperations {
+    async fn sync_document(doc_uri: &str, sync_options: SyncOptions) -> SyncResult;
+    async fn transfer_ownership(doc_uri: &str, block_id: &str, target_user: &str) -> ();
+    async fn claim_ownership(doc_uri: &str, block_id: &str, force: bool) -> ClaimResult;
+    async fn resolve_conflict(doc_uri: &str, conflict_id: &str, resolution: ConflictResolution) -> ();
+    async fn get_collaboration_status(doc_uri: &str) -> CollaborationStatus;
 }
 ```
 
-### 1.5. 协作功能接口
+### 1.6. Recipe 和导出接口策略
 
+**Recipe 执行引擎架构**：
+
+```mermaid
+graph TB
+    A[Recipe 请求] --> B[RecipeEngine]
+    B --> C[配置解析]
+    C --> D[依赖分析]
+    D --> E[并行获取]
+    E --> F[内容转换]
+    F --> G[结果生成]
+    
+    subgraph "配置处理"
+        C1[YAML/JSON 解析]
+        C2[模式验证]
+        C3[参数补全]
+    end
+    
+    subgraph "引用解析"
+        D1[跨文档 URI]
+        D2[循环检测]
+        D3[依赖图构建]
+    end
+    
+    subgraph "内容获取"
+        E1[缓存查询]
+        E2[网络加载]
+        E3[错误处理]
+    end
+    
+    C --> C1
+    C --> C2
+    C --> C3
+    D --> D1
+    D --> D2
+    D --> D3
+    E --> E1
+    E --> E2
+    E --> E3
+    
+    style A fill:#e1f5fe
+    style G fill:#c8e6c9
+    style B fill:#fff3e0
+```
+
+**Recipe 执行策略设计**：
+
+| 处理阶段 | 实现策略 | 错误处理 | 性能优化 |
+|----------|----------|----------|----------|
+| **配置解析** | 模式验证 + 参数补全 | 详细错误信息 | 配置缓存、懒加载 |
+| **依赖分析** | 拓扑排序 + 循环检测 | 依赖图裁剪 | 并行分析、结果缓存 |
+| **内容获取** | 批量获取 + 缓存复用 | 部分失败容错 | 预取、连接池 |
+| **内容转换** | 流式处理 + 模板引擎 | 转换错误隔离 | 内存流、并行处理 |
+| **结果输出** | 原子写入 + 校验和 | 输出失败回滚 | 增量更新、文件锁 |
+
+**跨文档引用处理策略**：
+
+```mermaid
+flowchart TD
+    A[URI 解析] --> B{缓存命中?}
+    B -->|是| C[返回缓存内容]
+    B -->|否| D{目标文档已开?}
+    D -->|是| E[直接引用]
+    D -->|否| F[网络获取]
+    F --> G{获取成功?}
+    G -->|是| H[存入缓存]
+    G -->|否| I{错误处理策略}
+    I -->|占位符| J[生成占位内容]
+    I -->|跳过| K[忽略此引用]
+    I -->|错误| L[停止处理]
+    H --> E
+    E --> M[返回结果]
+    J --> M
+    K --> M
+    
+    style A fill:#e1f5fe
+    style M fill:#c8e6c9
+    style L fill:#ffcdd2
+```
+
+**性能优化策略**：
+- **并行处理**：依赖图引导的并行任务调度
+- **流式处理**：大型文档的流式转换，避免内存溢出
+- **缓存策略**：多级缓存 + 内容哈希验证
+- **资源控制**：并发限制 + 内存使用监控
+
+**核心接口设计**（详细实现见 API 文档）：
 ```rust
-impl Main {
-    /// 同步文档变更
-    pub async fn sync(&self, doc_uri: &str) -> Result<SyncResult, ElfiError> {
-        let handle = self.active_documents
-            .get(doc_uri)
-            .ok_or_else(|| ElfiError::DocumentNotOpen(doc_uri.to_string()))?;
-        
-        let start_time = std::time::Instant::now();
-        
-        // 执行同步操作
-        let result = handle.sync().await?;
-        
-        // 记录指标
-        self.metrics.record_sync_operation(&result, start_time.elapsed());
-        
-        tracing::info!("文档同步完成: {} (CRDT: {}, 冲突: {}, 耗时: {:?})",
-            doc_uri, result.crdt_merges, result.manual_conflicts, start_time.elapsed());
-        
-        Ok(result)
-    }
-    
-    /// 转移区块所有权
-    pub async fn transfer_ownership(
-        &self,
-        doc_uri: &str,
-        block_id: &str,
-        to_user: &str
-    ) -> Result<(), ElfiError> {
-        let handle = self.active_documents
-            .get(doc_uri)
-            .ok_or_else(|| ElfiError::DocumentNotOpen(doc_uri.to_string()))?;
-        
-        let uuid = uuid::Uuid::parse_str(block_id)
-            .map_err(|_| ElfiError::InvalidBlockId(block_id.to_string()))?;
-        
-        handle.transfer_ownership(&uuid, to_user).await?;
-        
-        tracing::info!("区块所有权已转移: {} -> {}", &block_id[..8], to_user);
-        
-        Ok(())
-    }
-    
-    /// 声明区块所有权
-    pub async fn claim_ownership(
-        &self,
-        doc_uri: &str,
-        block_id: &str
-    ) -> Result<(), ElfiError> {
-        let handle = self.active_documents
-            .get(doc_uri)
-            .ok_or_else(|| ElfiError::DocumentNotOpen(doc_uri.to_string()))?;
-        
-        let uuid = uuid::Uuid::parse_str(block_id)
-            .map_err(|_| ElfiError::InvalidBlockId(block_id.to_string()))?;
-        
-        let current_user = self.session_manager.get_current_user().await?;
-        handle.claim_ownership(&uuid, &current_user).await?;
-        
-        tracing::info!("区块所有权已声明: {} -> {}", &block_id[..8], current_user);
-        
-        Ok(())
-    }
+// Recipe 执行统一接口
+interface RecipeOperations {
+    async fn list_recipes(doc_uri: &str) -> Vec<RecipeInfo>;
+    async fn validate_recipe(doc_uri: &str, recipe_name: &str) -> RecipeValidation;
+    async fn execute_recipe(doc_uri: &str, recipe_name: &str, output_config: OutputConfig) -> ExportResult;
+    async fn preview_recipe(doc_uri: &str, recipe_name: &str) -> PreviewResult;
+    async fn cancel_recipe_execution(execution_id: &str) -> ();
 }
 ```
 
-### 1.6. Recipe 和导出接口
+## 2. SessionManager - 网络会话管理策略
 
-```rust
-impl Main {
-    /// 列出可用的 Recipe
-    pub async fn list_recipes(&self, doc_uri: &str) -> Result<Vec<RecipeInfo>, ElfiError> {
-        let handle = self.active_documents
-            .get(doc_uri)
-            .ok_or_else(|| ElfiError::DocumentNotOpen(doc_uri.to_string()))?;
-        
-        let recipes = handle.list_recipes().await?;
-        
-        Ok(recipes)
-    }
+### 2.1. Zenoh 网络抽象策略
+
+**网络架构设计决策**：
+
+```mermaid
+graph TB
+    A[SessionManager] --> B[Zenoh Session]
+    A --> C[PeerDiscovery]
+    A --> D[ConnectionPool]
+    A --> E[EncryptionManager]
     
-    /// 执行 Recipe 导出
-    pub async fn export(
-        &self,
-        doc_uri: &str,
-        recipe_name: &str,
-        output_path: &str
-    ) -> Result<ExportResult, ElfiError> {
-        let handle = self.active_documents
-            .get(doc_uri)
-            .ok_or_else(|| ElfiError::DocumentNotOpen(doc_uri.to_string()))?;
-        
-        let start_time = std::time::Instant::now();
-        
-        // 执行 Recipe
-        let result = self.recipe_engine
-            .execute_recipe(doc_uri, recipe_name, output_path)
-            .await?;
-        
-        // 记录指标
-        self.metrics.record_recipe_execution(
-            recipe_name,
-            start_time.elapsed(),
-            result.blocks_processed,
-            result.references_resolved,
-        );
-        
-        tracing::info!("Recipe 执行完成: {} (处理 {} 个区块, {} 个引用, 耗时 {:?})",
-            recipe_name, result.blocks_processed, result.references_resolved, start_time.elapsed());
-        
-        Ok(result)
-    }
+    B --> B1[发布/订阅]
+    B --> B2[查询/响应]
+    B --> B3[存储后端]
     
-    /// 验证 Recipe 配置
-    pub async fn validate_recipe(
-        &self,
-        doc_uri: &str,
-        recipe_name: &str
-    ) -> Result<RecipeValidation, ElfiError> {
-        let handle = self.active_documents
-            .get(doc_uri)
-            .ok_or_else(|| ElfiError::DocumentNotOpen(doc_uri.to_string()))?;
-        
-        let validation = handle.validate_recipe(recipe_name).await?;
-        
-        Ok(validation)
-    }
-}
+    C --> C1[mDNS 发现]
+    C --> C2[手动配置]
+    C --> C3[云发现服务]
+    
+    D --> D1[连接复用]
+    D --> D2[负载均衡]
+    D --> D3[健康检查]
+    
+    E --> E1[端到端加密]
+    E --> E2[身份认证]
+    E --> E3[权限管理]
+    
+    style A fill:#e1f5fe
+    style B fill:#c8e6c9
+    style C fill:#fff3e0
+    style D fill:#ffecb3
+    style E fill:#f3e5f5
 ```
 
-## 2. SessionManager - 网络会话管理
-
-### 2.1. Zenoh 会话抽象
-
+**核心接口设计**（详细实现见 API 文档）：
 ```rust
-// core/src/session/manager.rs
-pub struct SessionManager {
-    zenoh_session: Arc<zenoh::Session>,
-    network_config: NetworkConfig,
-    peer_discovery: Arc<PeerDiscovery>,
-    connection_pool: Arc<ConnectionPool>,
-    encryption: Arc<EncryptionManager>,
-}
-
-impl SessionManager {
-    pub async fn new(config: &NetworkConfig) -> Result<Self, SessionError> {
-        // 配置 Zenoh 会话
-        let mut zenoh_config = zenoh::config::Config::default();
-        
-        // 设置监听地址
-        if let Some(listen) = &config.listen_addresses {
-            zenoh_config.insert_json5("listen/endpoints", &serde_json::to_string(listen)?)?;
-        }
-        
-        // 设置连接目标
-        if let Some(connect) = &config.connect_endpoints {
-            zenoh_config.insert_json5("connect/endpoints", &serde_json::to_string(connect)?)?;
-        }
-        
-        // 开启 Zenoh 会话
-        let session = Arc::new(zenoh::open(zenoh_config).await?);
-        
-        // 初始化对等发现
-        let peer_discovery = Arc::new(PeerDiscovery::new(session.clone(), config));
-        
-        Ok(Self {
-            zenoh_session: session,
-            network_config: config.clone(),
-            peer_discovery,
-            connection_pool: Arc::new(ConnectionPool::new()),
-            encryption: Arc::new(EncryptionManager::new(&config.encryption)?),
-        })
-    }
-    
-    /// 获取当前用户信息
-    pub async fn get_current_user(&self) -> Result<String, SessionError> {
-        // 从配置或认证令牌中获取用户信息
-        Ok(self.network_config.user_id.clone()
-            .unwrap_or_else(|| "anonymous".to_string()))
-    }
-    
-    /// 发布操作到网络
-    pub async fn publish_operation(
-        &self,
-        doc_uri: &str,
-        operation: &CrdtOperation
-    ) -> Result<(), SessionError> {
-        let key = format!("/elf/docs/{}/ops", doc_uri);
-        
-        // 加密操作数据
-        let encrypted_data = self.encryption.encrypt(operation).await?;
-        
-        // 发布到 Zenoh 网络
-        self.zenoh_session
-            .put(&key, encrypted_data)
-            .await?;
-        
-        Ok(())
-    }
-    
-    /// 订阅文档操作
-    pub async fn subscribe_operations<F>(
-        &self,
-        doc_uri: &str,
-        callback: F
-    ) -> Result<zenoh::Subscriber<'static, ()>, SessionError>
-    where
-        F: Fn(CrdtOperation) + Send + Sync + 'static,
-    {
-        let key = format!("/elf/docs/{}/ops", doc_uri);
-        let encryption = self.encryption.clone();
-        let callback = Arc::new(callback);
-        
-        let subscriber = self.zenoh_session
-            .declare_subscriber(&key)
-            .callback(move |sample| {
-                let encryption = encryption.clone();
-                let callback = callback.clone();
-                
-                tokio::spawn(async move {
-                    if let Ok(operation) = encryption.decrypt::<CrdtOperation>(sample.payload()).await {
-                        callback(operation);
-                    }
-                });
-            })
-            .await?;
-        
-        Ok(subscriber)
-    }
-    
-    /// 查询历史操作
-    pub async fn query_history(
-        &self,
-        doc_uri: &str,
-        since: Option<chrono::DateTime<chrono::Utc>>
-    ) -> Result<Vec<CrdtOperation>, SessionError> {
-        let key = format!("/elf/docs/{}/ops", doc_uri);
-        let selector = if let Some(timestamp) = since {
-            format!("{}?_time=[{},*]", key, timestamp.timestamp())
-        } else {
-            key
-        };
-        
-        let mut operations = Vec::new();
-        let replies = self.zenoh_session.get(&selector).await?;
-        
-        while let Ok(reply) = replies.recv_async().await {
-            if let Ok(operation) = self.encryption.decrypt::<CrdtOperation>(reply.payload()).await {
-                operations.push(operation);
-            }
-        }
-        
-        // 按时间戳排序
-        operations.sort_by_key(|op| op.timestamp);
-        Ok(operations)
-    }
+// 网络会话管理统一接口
+interface SessionManagement {
+    async fn initialize_session(config: &NetworkConfig) -> SessionManager;
+    async fn publish_operation(doc_uri: &str, operation: &CrdtOperation) -> ();
+    async fn subscribe_operations(doc_uri: &str, callback: OperationCallback) -> Subscription;
+    async fn query_history(doc_uri: &str, since: Option<DateTime>) -> Vec<CrdtOperation>;
+    async fn discover_peers() -> Vec<PeerInfo>;
 }
 ```
 
@@ -992,36 +894,117 @@ pub enum MetricOperation {
 }
 ```
 
-## 验证清单
+## 6. 实施验证策略
 
-### Main 接口完整性
-- [ ] 所有 CLI 命令都有对应的 Main 方法
-- [ ] 异步接口设计支持高并发场景
-- [ ] 错误处理提供详细信息和建议
-- [ ] 多语言绑定的兼容性验证
+### 6.1. 分阶段验证方法
 
-### 会话管理稳定性
-- [ ] Zenoh 网络会话的连接管理正确
-- [ ] 对等节点发现和连接建立正常
-- [ ] 网络分区和重连恢复机制有效
-- [ ] 加密和安全机制正确实现
+**阶段一：核心接口验证**
 
-### 文档管理正确性
-- [ ] 文档生命周期管理完整
-- [ ] 实时同步和冲突解决正确
-- [ ] 缓存策略和性能优化有效
-- [ ] 内存使用和资源释放合理
+```mermaid
+graph TB
+    A[Phase 1: 核心接口] --> B[Main 类设计]
+    A --> C[接口一致性]
+    A --> D[多语言绑定]
+    
+    B --> B1[功能完整性]
+    B --> B2[异步接口设计]
+    
+    C --> C1[CLI 命令映射]
+    C --> C2[错误处理统一]
+    
+    D --> D1[FFI 接口验证]
+    D --> D2[WASM 兼容性]
+    
+    style A fill:#e1f5fe
+    style B fill:#c8e6c9
+    style C fill:#fff3e0
+    style D fill:#ffecb3
+```
 
-### 解析器准确性
-- [ ] .elf 语法解析完全正确
-- [ ] 错误处理和用户提示友好
-- [ ] Tree-sitter 集成性能良好
-- [ ] 各种块类型的解析支持完整
+**阶段二：核心组件验证**
 
-### 系统指标可观察性
-- [ ] 关键性能指标收集完整
-- [ ] 错误统计和分析有帮助
-- [ ] 指标数据的准确性和实时性
-- [ ] 监控和告警机制有效
+```mermaid
+graph TB
+    A[Phase 2: 核心组件] --> B[SessionManager]
+    A --> C[DocumentManager]
+    A --> D[SystemMetrics]
+    
+    B --> B1[网络连接稳定性]
+    B --> B2[对等发现机制]
+    
+    C --> C1[文档生命周期]
+    C --> C2[同步冲突处理]
+    
+    D --> D1[指标收集准确性]
+    D --> D2[性能监控有效性]
+    
+    style A fill:#e1f5fe
+    style B fill:#c8e6c9
+    style C fill:#fff3e0
+    style D fill:#ffecb3
+```
 
-这个核心模块设计确保了 ELFI 系统的稳定性、性能和可扩展性，为上层的 Weave 和 Tangle 模块提供了坚实的基础。
+### 6.2. 关键验证指标
+
+**系统性能基准**：
+
+| 指标类型 | 目标值 | 验证场景 | 验证方法 |
+|----------|--------|----------|----------|
+| **接口响应** | < 50ms | Main 接口调用 | 基准测试 + 压力测试 |
+| **网络同步** | < 100ms | 实时协作 | 多节点测试 |
+| **文档加载** | < 200ms | 大文档打开 | 性能剖析 |
+| **内存使用** | < 50MB | 常规使用 | 内存分析工具 |
+
+### 6.3. 验证清单
+
+**Main 接口完整性验证**：
+- [ ] **功能覆盖**：所有 CLI 命令都有对应的 Main 方法，接口完整无遗漏
+- [ ] **并发支持**：异步接口设计支持高并发场景，无竞态条件
+- [ ] **错误处理**：错误处理提供详细信息和建议，用户体验友好
+- [ ] **多语言兼容**：FFI 和 WASM 绑定的兼容性验证通过
+
+**会话管理稳定性验证**：
+- [ ] **连接管理**：Zenoh 网络会话的连接建立、维护和释放正确
+- [ ] **节点发现**：对等节点发现机制在各种网络环境下正常工作
+- [ ] **容错能力**：网络分区和重连恢复机制有效，自动故障恢复
+- [ ] **安全机制**：加密传输和身份认证机制正确实现
+
+**文档管理正确性验证**：
+- [ ] **生命周期**：文档打开、编辑、保存、关闭的完整生命周期管理
+- [ ] **实时同步**：多用户实时协作同步和冲突解决机制准确
+- [ ] **缓存策略**：多级缓存的命中率和失效策略满足性能要求
+- [ ] **资源管理**：内存使用和资源释放合理，无内存泄漏
+
+**解析器准确性验证**：
+- [ ] **语法解析**：.elf 语法解析完全正确，覆盖所有语法特性
+- [ ] **错误处理**：解析错误的定位和提示信息用户友好
+- [ ] **性能表现**：Tree-sitter 集成性能良好，大文档解析流畅
+- [ ] **扩展支持**：各种块类型的解析支持完整，支持自定义扩展
+
+**系统指标可观察性验证**：
+- [ ] **指标完整性**：关键性能指标收集覆盖所有重要操作
+- [ ] **分析价值**：错误统计和趋势分析对系统优化有帮助
+- [ ] **实时性**：指标数据的准确性和实时性满足监控需求
+- [ ] **告警机制**：监控和告警机制有效，及时发现和响应问题
+
+### 6.4. 实施优先级
+
+**基础层（Foundation Layer）**：
+- Main 接口的基础功能和异步设计：提供系统统一入口和生命周期管理
+- SessionManager 的网络连接和同步机制：建立分布式协作的底层网络能力
+- DocumentManager 的核心文档管理功能：实现文档的基本 CRUD 和状态管理
+- *说明：这一层构成 ELFI 核心引擎的基础架构，为所有上层功能提供基本服务*
+
+**功能层（Feature Layer）**：
+- 基于网络层的解析器准确性和性能：在稳定网络基础上实现高效的 .elf 文件解析
+- 基于 Main 接口的系统指标收集和监控：利用统一接口实现系统状态的可观测性
+- 基于核心功能的错误处理和用户体验优化：在稳定核心上构建友好的错误处理机制
+- *说明：这一层在基础设施稳定后构建，提供核心引擎的完整业务功能*
+
+**增强层（Enhancement Layer）**：
+- 基于功能层的高级缓存策略和性能优化：在稳定功能基础上进一步提升系统性能
+- 基于成熟架构的扩展性支持和插件机制：允许第三方扩展核心引擎功能
+- 基于完整功能的高级监控和分析功能：提供深入的系统分析和诊断能力
+- *说明：这一层提供高级特性和性能优化，依赖于底层架构的成熟度*
+
+这个核心模块实现策略确保了 ELFI 系统具备稳定性、高性能和良好的可扩展性，为上层的 Weave 和 Tangle 模块提供了坚实的基础架构支撑。通过分阶段验证和明确的性能基准，我们可以系统性地构建一个可靠的文学化编程平台。

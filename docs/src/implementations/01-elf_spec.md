@@ -14,7 +14,37 @@
 - **结构化关系**：通过 `parent` 等元数据建立块之间的层级关系
 - **版本控制友好**：纯文本格式，便于 Git 等工具进行差异比较
 
-### 1.2. 与 Markdown 的关系
+### 1.2. 扩展性设计原则 ⚠️
+
+**重要：elfi 系统的设计哲学是"结构与语义分离"**
+
+#### 系统职责边界
+- **elfi 负责**：
+  - 文件结构解析（块分割、YAML 解析）
+  - CRDT 数据同步和版本控制
+  - 命令行接口和基础操作
+  - 网络通信和存储抽象
+- **elfi 不负责**：
+  - 具体类型的业务语义解释
+  - 特定属性的验证和处理逻辑
+  - 内容格式的渲染和展示
+  - 领域特定的冲突解决策略
+
+#### 用户定义优先原则
+- **类型系统**：完全由用户和项目定义，elfi 只是透明传递
+- **属性名称**：任意字符串，含义由应用层解释
+- **关系类型**：开放式设计，支持任意项目特定关系
+- **内容格式**：elfi 只保证文本存储，格式解释由插件处理
+
+#### 插件化扩展机制
+- **类型处理器**：通过插件系统注册特定类型的处理逻辑
+- **冲突解决器**：可插拔的冲突解决策略
+- **渲染引擎**：可扩展的内容渲染机制
+- **验证器**：可选的内容验证插件
+
+这种设计确保 elfi 保持轻量和通用性，避免被任何特定领域的需求绑定。
+
+### 1.3. 与 Markdown 的关系
 
 `.elf` 格式在基础文本处理上与 Markdown 高度相似，但在以下方面有重要扩展：
 
@@ -43,7 +73,7 @@ name: introduction
 id: a1b2c3d4-5e6f-7890-1234-56789abcdef0
 type: code
 name: setup-code
-metadata:
+attributes:
   parent: f47ac10b-58cc-4372-a567-0e02b2c3d479
   language: bash
 ---
@@ -51,14 +81,14 @@ npm install elfi-core
 
 ---
 id: 2e8f9a3b-1c4d-5a6b-7c8d-9e0f1a2b3c4d
-type: link
-name: shared-utils
-metadata:
-  parent: f47ac10b-58cc-4372-a567-0e02b2c3d479
+type: relations
+name: document-relations
+attributes:
+  owner: alice
+  merge_method: manual
 ---
-target: elf://shared-lib/utils/helpers#string-utils
-ref_type: include
-display_text: 共享工具函数
+setup-code -> introduction [child_of] {}
+introduction -> elf://shared-lib/utils/helpers#string-utils [references] {display_text: "共享工具函数"}
 ```
 
 ### 2.2. 块结构组成
@@ -76,9 +106,11 @@ display_text: 共享工具函数
 
 ## 3. 元数据部分规范
 
-### 3.1. 必需字段
+### 3.1. 核心字段
 
-#### `id` (字符串)
+每个Block都有且仅有以下4个核心字段：
+
+#### `id` (字符串，必需)
 ```yaml
 id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 ```
@@ -87,22 +119,24 @@ id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 - **约束**：全局唯一，系统自动生成
 - **用途**：CRDT 操作的目标标识、跨文档引用、历史追踪
 
-#### `type` (字符串)
+#### `type` (字符串，必需)
 ```yaml
-type: markdown  # 或 code, link, recipe 等
+type: markdown  # 或 code, relations, recipe 等 - 完全由用户定义
 ```
-- **作用**：声明块的内容类型，决定解析和渲染方式
-- **标准类型**：
-  - `markdown`: 标准 Markdown 文本内容
-  - `code`: 程序代码（需要 `language` 元数据）
-  - `link`: 跨文档引用（使用特殊内容格式）
-  - `recipe`: 内容转换配方（YAML 配置）
-  - `metadata`: 文档级元数据（通常是第一个块）
-- **扩展性**：支持自定义类型，由插件系统处理
+- **作用**：声明块的内容类型，用于上层应用的处理分发
+- **⚠️ 重要说明**：**elfi 系统本身不定义任何具体类型**，以下仅为常用约定示例
+- **常用约定类型**（非系统强制）：
+  - `markdown`: Markdown 文本内容（用户约定）
+  - `code`: 程序代码（用户约定）
+  - `relations`: 关系管理（用户约定，可用任意名称）
+  - `recipe`: 转换配方（用户约定）
+  - `metadata`: 元数据（用户约定）
+- **设计原则**：
+  - **类型完全自由**：用户可以定义任意字符串作为类型
+  - **语义由应用定义**：elfi 只负责存储和传递，不解释类型含义
+  - **插件机制处理**：具体类型的业务逻辑通过插件系统实现
 
-### 3.2. 可选字段
-
-#### `name` (字符串)
+#### `name` (字符串，可选)
 ```yaml
 name: helper-functions
 ```
@@ -111,26 +145,61 @@ name: helper-functions
 - **用途**：跨文档引用目标、内部导航、Recipe 选择器
 - **格式**：推荐使用 `kebab-case` 格式（如 `intro-section`, `utils-block`）
 
-#### `metadata` (对象)
+#### `attributes` (对象，可选)
 ```yaml
-metadata:
+attributes:
+  # 结构化属性
   parent: parent-block-id
-  language: python
-  interactive: true
   tags: ["export", "utility"]
   description: "工具函数集合"
+  
+  # 协作属性  
   owner: "alice"
-  merge_method: "manual"
+  merge_method: "manual"  # crdt | manual
+  contributors: ["alice", "bob"]
+  
+  # 类型特定属性
+  language: python          # code 类型
+  interactive: true         # 交互式渲染
+  
+  # 用户自定义属性（示例）
+  speaker: "Alice"          # conversation 类型
+  timestamp: "2024-01-15T14:00:00Z"
+  role: "Product Manager"
+  author: "Bob"
+  derived_from: ["block-1", "block-2"]
+  meeting_type: "技术讨论"
 ```
 
-**标准元数据属性**：
-- `parent`: 父块 ID，用于构建层级结构
-- `language`: 代码语言（适用于 code 类型）
-- `interactive`: 是否需要交互式渲染（Tangle 层使用）
-- `tags`: 标签数组，用于分类和 Recipe 选择
-- `description`: 块的描述信息
-- `owner`: 区块所有者（协作权限控制）
-- `merge_method`: 合并策略 (`crdt` | `manual`)
+**⚠️ 重要说明**：**所有属性名称和含义都完全由用户定义**，elfi 系统不强制任何特定属性。
+
+**常用约定属性**（仅供参考，非系统要求）：
+- `parent`: 父块 ID，用于构建层级结构（用户约定）
+- `tags`: 标签数组，用于分类和过滤（用户约定）
+- `description`: 块的描述信息（用户约定）
+- `owner`: 区块所有者（协作约定）
+- `contributors`: 贡献者列表（协作约定）
+- `merge_method`: 合并策略（协作约定，值可以是任意字符串）
+
+**项目特定属性示例**（完全由用户定义）：
+- **代码项目**: `language`, `author`, `test_coverage`
+- **对话记录**: `speaker`, `timestamp`, `topic`, `role`
+- **内容管理**: `derived_from`, `source`, `references`
+- **会议管理**: `meeting_type`, `estimated_duration`, `participants`
+- **版本控制**: `version`, `created`, `modified`, `status`
+- **业务流程**: `priority`, `assignee`, `deadline`, `category`
+
+**灵活性原则**：
+- **属性名自由**：可以使用任意字符串作为属性名
+- **值类型自由**：支持字符串、数组、对象、数字等任意JSON类型
+- **语义自定义**：属性的业务含义完全由项目定义
+- **处理可选**：上层应用可选择处理或忽略任意属性
+
+**设计原则**：
+- **命名约定**: 使用 `snake_case` 格式，避免特殊字符
+- **数据类型**: 支持字符串、数组、对象、布尔值、数字
+- **嵌套限制**: 建议attributes嵌套深度不超过 3 层，保持解析性能
+- **大小限制**: 单个 attributes 对象建议不超过 1KB
 
 ## 4. 内容部分规范
 
@@ -140,27 +209,75 @@ metadata:
 
 ### 4.2. 特殊块类型的内容格式
 
-#### Link Block 语法
+#### Relations Block 语法
 
-Link Block 使用特殊的键值对语法：
+Relations Block 是一种特殊类型的块，专门用于管理文档中所有块间关系。**关系信息存储在内容部分**：
 
 ```elf
 ---
-id: ref-utils
-type: link
-name: reference-to-utils
+id: doc-relations
+type: relations
+name: document-relations
+attributes:
+  description: "管理文档内所有块间关系"
+  owner: "alice"
+  merge_method: "manual"
 ---
-target: elf://my-project/components/shared-utils#helper-functions
-ref_type: include
-display_text: 共享工具函数
-description: 项目中的通用辅助函数库
+# 文档内关系
+setup-code -> introduction [child_of] {}
+introduction -> summary [parent_of] {weight: 1.0}
+
+# 跨文档引用 
+introduction -> elf://shared-lib/utils/helpers#string-utils [references] {display_text: "共享工具函数"}
+api-design -> elf://team-notes/meetings/2024-01-15#decision [derived_from] {meeting_id: "tech-discussion"}
 ```
 
-**Link Block 内容字段**：
-- `target`: 目标 URI（必需）
-- `ref_type`: 引用类型 - `include` | `reference` | `embed`
-- `display_text`: 显示文本（可选）
-- `description`: 引用描述（可选）
+**设计说明**：
+- **attributes部分**: 存储Relations Block本身的属性和所有权信息
+- **内容部分**: 使用简洁语法描述所有块间关系
+
+**Relations语法格式**：
+```
+source -> target [relation_type] {properties}
+```
+
+**组成部分**：
+- `source`: 源块名称或ID
+- `target`: 目标块名称、ID或URI
+- `relation_type`: 关系类型（见下文）
+- `properties`: 关系属性（JSON对象格式，可选）
+
+**⚠️ 重要说明**：**关系类型完全由用户定义**，elfi 系统不限制关系类型。
+
+**常用约定关系类型**（仅为建议，非系统强制）：
+- `parent_of` / `child_of`: 层级关系（用户约定）
+- `references`: 一般引用关系（用户约定）
+- `includes`: 内容包含关系（用户约定）
+- `derived_from`: 派生关系（用户约定）
+- `implements`: 实现关系（用户约定）
+- `depends_on`: 依赖关系（用户约定）
+
+**项目自定义关系示例**：
+- **软件开发**: `tests`, `documents`, `reviews`, `replaces`
+- **内容管理**: `summarizes`, `expands_on`, `contradicts`, `updates`
+- **业务流程**: `approves`, `blocks`, `triggers`, `completes`
+- **学术研究**: `cites`, `supports`, `refutes`, `builds_upon`
+
+**关系灵活性**：
+- **类型自由**：可以使用任意字符串作为关系类型
+- **属性自由**：关系属性 `{properties}` 可以包含任意JSON数据
+- **语义开放**：关系的具体含义由项目和应用定义
+
+**跨文档引用格式**：
+```
+local-block -> elf://[user/]repo/doc#block-name [relation_type] {props}
+```
+
+**Relations Block特性**：
+- **所有权模型**: 通过`owner`属性指定关系管理者
+- **Manual合并**: 使用`merge_method: manual`避免关系冲突
+- **集中管理**: 一个文档中的所有关系统一管理
+- **URI支持**: 原生支持跨文档引用
 
 #### Recipe Block 语法
 
@@ -330,7 +447,7 @@ impl ElfParser {
             id: metadata.id,
             block_type: metadata.block_type,
             name: metadata.name,
-            metadata: metadata.metadata,
+            attributes: metadata.attributes,
             content: content_text.unwrap_or("").to_string(),
         })
     }
@@ -346,7 +463,7 @@ struct BlockMetadata {
     #[serde(rename = "type")]
     block_type: String,
     name: Option<String>,
-    metadata: Option<serde_json::Value>,
+    attributes: Option<serde_json::Value>,
 }
 
 impl BlockMetadata {
@@ -355,20 +472,27 @@ impl BlockMetadata {
         uuid::Uuid::parse_str(&self.id)
             .map_err(|_| ValidationError::InvalidUuid(self.id.clone()))?;
         
-        // 验证块类型
-        match self.block_type.as_str() {
-            "markdown" | "code" | "link" | "recipe" | "metadata" => {}
-            _ => return Err(ValidationError::UnknownBlockType(self.block_type.clone())),
+        // 注意：elfi 系统不验证具体的块类型，任何字符串都是有效的
+        // 以下代码仅为示例，实际实现中应该接受任意类型
+        // match self.block_type.as_str() {
+        //     "markdown" | "code" | "relations" | "recipe" | "metadata" => {}
+        //     _ => return Err(ValidationError::UnknownBlockType(self.block_type.clone())),
+        // }
+        
+        // elfi 只验证类型是非空字符串
+        if self.block_type.is_empty() {
+            return Err(ValidationError::EmptyBlockType);
         }
         
-        // 类型特定验证
-        if self.block_type == "code" {
-            if let Some(meta) = &self.metadata {
-                if !meta.get("language").is_some() {
-                    return Err(ValidationError::MissingLanguage);
-                }
-            }
-        }
+        // 注意：elfi 系统不执行类型特定验证
+        // 以下代码仅为示例，实际的验证逻辑应由应用层和插件实现
+        // if self.block_type == "code" {
+        //     if let Some(attrs) = &self.attributes {
+        //         if !attrs.get("language").is_some() {
+        //             return Err(ValidationError::MissingLanguage);
+        //         }
+        //     }
+        // }
         
         Ok(())
     }
@@ -433,16 +557,19 @@ print("Hello World")
 - `name` 在同一文档内必须唯一（如果指定）
 - 块分隔符 `---` 必须独占一行
 
-**类型验证**：
-- `code` 块的 `metadata.language` 应为有效的语言标识符
-- `link` 块的 `target` 必须是有效的 URI 格式
-- `recipe` 块的内容必须是有效的 YAML 配置
-- `parent` 引用必须指向存在的块 ID
+**语义验证**（完全可选，由应用层决定）：
+- `code` 块的 `attributes.language`：如果项目约定使用此属性，应为项目认可的语言标识符
+- `relations` 块的内容：如果使用关系语法，应符合项目定义的格式
+- `recipe` 块的内容：如果项目约定使用 YAML，应符合项目的配置规范
+- `parent` 引用：如果项目使用层级结构，应指向存在的块 ID
+
+**⚠️ 重要**：elfi 系统本身不执行这些验证，具体验证逻辑由应用层和插件实现。
 
 **引用完整性**：
-- Link Block 的目标 URI 应该可以解析
+- Relations Block 中的目标 URI 应该可以解析
 - Recipe 中的外部引用应该可达
 - 不允许循环的 `parent` 引用
+- Relations Block 中不允许循环引用
 
 ### 8.2. 错误类型定义
 
@@ -481,8 +608,8 @@ impl ParseError {
                 format!("块 '{}' 缺少必需的 '{}' 字段", block_id, field),
             ParseError::InvalidUuid(uuid) => 
                 format!("无效的 UUID 格式: {}。请使用标准 UUID 格式。", uuid),
-            ParseError::UnknownBlockType(block_type) => 
-                format!("未知的块类型: {}。支持的类型: markdown, code, link, recipe", block_type),
+            ParseError::EmptyBlockType => 
+                "块类型不能为空字符串".to_string(),
             _ => self.to_string(),
         }
     }
@@ -495,7 +622,7 @@ impl ParseError {
                 "确保 id 字段在 YAML 元数据中存在"
             ],
             ParseError::MissingRequiredField { field, .. } if field == "type" => vec![
-                "指定块类型: markdown, code, link, recipe",
+                "指定任意块类型（如: markdown, code, custom_type 等）",
                 "确保 type 字段在 YAML 元数据中存在",
                 "检查 YAML 语法是否正确"
             ],
@@ -520,10 +647,18 @@ impl ParseError {
 - Recipe 块描述用途：`export-documentation`
 
 **元数据使用**：
-- 为代码块始终指定 `language`
-- 为公共块提供 `description`
-- 使用有意义的 `tags` 便于 Recipe 选择
-- 合理使用 `parent` 构建层级结构
+- **必需字段**: 为代码块始终指定 `language`
+- **描述信息**: 为公共块提供清晰的 `description`
+- **分类标记**: 使用有意义的 `tags` 便于 Recipe 选择和内容过滤
+- **层级结构**: 合理使用 `parent` 构建文档层次
+- **协作追踪**: 使用 `owner` 和 `contributors` 明确责任
+- **自定义扩展**: 根据用例需要添加领域特定属性（如对话的 `speaker`, `timestamp`）
+
+**Metadata 最佳实践**：
+- **语义化命名**: 使用描述性的属性名，如 `meeting_type` 而非 `type2`
+- **数据类型一致**: 同类属性在不同区块间保持相同格式（如时间戳格式）
+- **适度使用**: 避免过多冗余信息，重点记录对后续处理有价值的数据
+- **Recipe友好**: 考虑属性在模板系统中的可用性
 
 ### 9.2. 结构组织
 

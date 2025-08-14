@@ -1,209 +1,539 @@
-# 对话即文档测试场景
-# 用于验证 CRDT 实时协作和冲突解决能力
+# API设计讨论 - 对话即文档示例
+# 展示如何将团队技术讨论转换为结构化文档
+
+# ⚠️ 重要说明：本文件仅为示例用途
+# 
+# 本 .elf 文件展示的所有类型、属性、关系都是项目特定的约定，
+# 不是 elfi 系统的内置要求。elfi 系统本身：
+#
+# ✅ elfi 系统负责：
+# - 解析文件结构（块分割、YAML元数据）
+# - CRDT 数据同步和版本控制
+# - 命令行接口和基础操作
+# - 网络通信和存储抽象
+#
+# ❌ elfi 系统不负责：
+# - 定义 "conversation"、"metadata"、"relations" 等类型的具体含义
+# - 解释 "speaker"、"timestamp"、"owner" 等属性的业务逻辑
+# - 验证代码语法、时间格式等内容正确性
+# - 实现特定的渲染或处理逻辑
+#
+# 🔧 实际项目中：
+# - 可以使用完全不同的类型名称（如：discussion、note、task）
+# - 可以定义完全不同的属性（如：priority、assignee、category）
+# - 可以实现项目特定的关系类型（如：blocks、approves、supersedes）
+# - 通过插件系统处理类型特定的业务逻辑
+#
+# 📝 本示例的约定：
+# - "conversation" 类型：表示对话记录
+# - "metadata" 类型：表示文档元信息  
+# - "relations" 类型：表示关系管理
+# - "speaker"、"timestamp" 等：对话相关的项目自定义属性
+# - "owner"、"merge_method" 等：协作相关的项目自定义属性
+#
+# 不同的项目完全可以使用不同的约定和命名方式。
 
 ---
-id: 4a5b6c7d-8e9f-1234-5678-90abcdef1234
+id: a1b2c3d4-e5f6-4567-8901-234567890abc
 type: metadata
 name: document-meta
-metadata:
-  title: "Real-time Collaboration Test Document"
+attributes:
+  title: "API Authentication Design Discussion"
   version: "1.0"
   created: "2024-01-15"
-  purpose: "Testing CRDT conflict resolution and real-time sync"
-  participants: ["Client-A", "Client-B", "Client-C"]
+  purpose: "团队API认证方案设计讨论记录"
+  participants: ["Alice", "Bob", "Charlie"]
+  meeting_type: "技术设计讨论"
+  estimated_duration: "45分钟"
 ---
 
 ---
-id: 5b6c7d8e-9f01-2345-6789-0abcdef12345
+id: b2c3d4e5-f678-5678-9012-3456789012cd
+type: conversation
+name: alice-opens-discussion
+attributes:
+  speaker: "Alice"
+  timestamp: "2024-01-15T14:00:00Z"
+  topic: "API认证方案"
+  role: "Product Manager"
+---
+大家好！今天我们需要为新的用户管理API设计认证方案。目前我们有以下需求：
+
+1. 支持Web端和移动端应用
+2. 需要保证安全性，防止token被盗用
+3. 要考虑用户体验，避免频繁重新登录
+4. 系统要能横向扩展，支持多服务实例
+
+目前我了解到有Session和Token两种主要方案，大家有什么建议吗？
+
+---
+id: c3d4e5f6-7890-6789-0123-456789012def
+type: conversation
+name: bob-suggests-jwt
+attributes:
+  speaker: "Bob"
+  timestamp: "2024-01-15T14:05:00Z"
+  topic: "JWT认证方案"
+  role: "Backend Developer"
+---
+我建议使用JWT (JSON Web Token) 方案，理由如下：
+
+**优势：**
+- 无状态设计，服务器无需存储session
+- 天然支持分布式，适合微服务架构
+- 包含完整用户信息，减少数据库查询
+- 支持跨域，便于前后端分离
+
+**技术细节：**
+- 使用RS256算法，公私钥分离
+- Access Token 有效期15分钟
+- Refresh Token 有效期7天
+- 在HTTP Header中传递：`Authorization: Bearer <token>`
+
+我可以提供一个基础的Python实现。
+
+---
+id: d4e5f6a7-8901-7890-1234-56789012ef01
+type: conversation
+name: charlie-security-concerns
+attributes:
+  speaker: "Charlie"
+  timestamp: "2024-01-15T14:12:00Z"
+  topic: "安全性考虑"
+  role: "Security Engineer"
+---
+Bob的JWT方案整体不错，但我需要强调几个安全问题：
+
+**关键安全措施：**
+1. **Token刷新机制**：Access Token必须短生命周期，通过Refresh Token定期更新
+2. **安全存储**：移动端使用Keychain/Keystore，Web端避免localStorage
+3. **撤销机制**：虽然JWT是无状态的，但我们需要黑名单机制处理紧急撤销
+4. **HTTPS强制**：所有JWT传输必须通过HTTPS
+5. **速率限制**：对token刷新接口做严格的速率限制
+
+**建议的token载荷：**
+```json
+{
+  "sub": "user_id",
+  "iat": "issued_at",
+  "exp": "expires_at", 
+  "role": "user_role",
+  "scope": ["read", "write"]
+}
+```
+
+还需要考虑CSRF防护和XSS防护。
+
+---
+id: e5f6a7b8-9012-8901-2345-6789012ef012
+type: conversation
+name: alice-final-decision
+attributes:
+  speaker: "Alice"
+  timestamp: "2024-01-15T14:25:00Z"
+  topic: "最终决策"
+  role: "Product Manager"
+---
+非常好的讨论！基于大家的输入，我们的最终决策是：
+
+**采用JWT认证方案，具体实施：**
+
+1. **技术选型**：JWT + RS256算法
+2. **token策略**：Access Token (15分钟) + Refresh Token (7天)
+3. **安全措施**：Charlie提到的所有安全要点都要实施
+4. **开发计划**：
+   - 第1周：Bob实现基础JWT服务
+   - 第2周：Charlie添加安全层和监控
+   - 第3周：集成测试和安全审计
+
+**下步行动：**
+- Bob：提供JWT实现代码和API文档
+- Charlie：制定安全检查清单
+- Alice：更新产品需求文档
+
+会议记录我会整理成技术文档，大家可以继续在文档中补充细节。
+
+---
+id: f6a7b8c9-0123-9012-3456-789012ef0123
 type: markdown
-name: initial-content
-metadata:
-  description: "文档的初始内容，将被并发修改"
-  tags: ["initial", "test", "collaborative"]
-  test_scenario: "baseline"
+name: api-design-decision
+attributes:
+  description: "基于团队讨论的API认证设计决策"
+  tags: ["decision", "api", "authentication"]
+  derived_from: ["alice-opens-discussion", "bob-suggests-jwt", "charlie-security-concerns", "alice-final-decision"]
+  contributors: ["Alice", "Bob", "Charlie"]
 ---
-# 协作文档测试
+# API认证方案设计决策
 
-Initial content.
+## 技术方案选择
 
-这是一个用于测试实时协作的文档。多个客户端会同时对这个文档进行编辑，以验证 CRDT 的冲突解决能力。
+基于2024年1月15日的团队技术讨论，我们选择**JWT (JSON Web Token)认证方案**。
 
----
-id: 6c7d8e9f-0123-4567-89ab-cdef12345678
-type: markdown
-name: test-block-a
-metadata:
-  description: "Client-A 专用的测试区块"
-  tags: ["client-a", "test"]
-  assigned_to: "Client-A"
----
-## Client-A 的贡献
+### 核心架构
 
-这是 Client-A 添加的内容区块。这个区块将在测试过程中被 Client-A 修改。
+- **算法**：RS256 (RSA + SHA256)
+- **Token类型**：Access Token + Refresh Token双token机制
+- **传输方式**：HTTP Authorization Header
+- **存储策略**：移动端Keychain/Keystore，Web端内存 + HTTP-only Cookie
 
-### 测试内容
-- [ ] 添加文本内容
-- [ ] 修改现有内容
-- [ ] 测试并发编辑
+### Token生命周期
 
----
-id: 7d8e9f01-2345-6789-abcd-ef1234567890
-type: markdown
-name: test-block-b
-metadata:
-  description: "Client-B 专用的测试区块"
-  tags: ["client-b", "test"]
-  assigned_to: "Client-B"
----
-## Client-B 的贡献
+| Token类型 | 有效期 | 用途 | 刷新机制 |
+|-----------|--------|------|----------|
+| Access Token | 15分钟 | API访问授权 | 通过Refresh Token更新 |
+| Refresh Token | 7天 | 获取新的Access Token | 用户重新登录后更新 |
 
-这是 Client-B 添加的内容区块。这个区块将在测试过程中被 Client-B 修改。
+### 安全要求
 
-### 测试内容
-- [ ] 同步验证测试
-- [ ] 冲突场景测试
-- [ ] 状态收敛验证
+1. **传输安全**：强制HTTPS，禁止HTTP明文传输
+2. **存储安全**：避免localStorage，使用安全存储机制
+3. **撤销机制**：实现JWT黑名单，支持紧急撤销
+4. **速率限制**：token刷新接口严格限流
+5. **防护策略**：CSRF Token + XSS防护
 
----
-id: 8e9f0123-4567-89ab-cdef-123456789012
-type: markdown
-name: conflict-test-area
-metadata:
-  description: "专门用于测试冲突解决的区域"
-  tags: ["conflict", "test", "critical"]
-  concurrent_edit_target: true
----
-## 冲突测试区域
+### 实施计划
 
-这个区域将被 Client-A 和 Client-B 同时编辑，用于测试冲突解决机制。
+- **第1周**：实现JWT核心服务 (负责人：Bob)
+- **第2周**：添加安全层和监控 (负责人：Charlie)  
+- **第3周**：集成测试和安全审计 (负责人：Alice协调)
 
-**原始文本**: Initial content for conflict testing.
+## 决策依据
 
-**测试计划**:
-1. Client-A 将修改为: "My initial content for conflict testing."
-2. Client-B 将修改为: "Our initial content for conflict testing."
-3. 验证 CRDT 合并结果
-
-**预期结果**: 自动合并后的文本应该包含两个客户端的修改，并且最终状态在所有客户端上一致。
+该方案能够满足以下产品需求：
+- ✅ 支持Web和移动端
+- ✅ 高安全性和防盗用机制
+- ✅ 良好用户体验，减少重复登录
+- ✅ 横向扩展能力，支持分布式部署
 
 ---
-id: 9f012345-6789-abcd-ef12-3456789012ab
-type: markdown
-name: collaboration-log
-metadata:
-  description: "协作过程的日志记录"
-  tags: ["log", "tracking"]
-  auto_update: true
----
-# 协作日志
-
-记录测试过程中的所有协作活动：
-
-## 测试会话记录
-
-### 会话 1: 基础同步测试
-- **时间**: 2024-01-15 10:00:00
-- **参与者**: Client-A, Client-B
-- **操作**: Client-A 添加 test-block-a, Client-B 添加 test-block-b
-- **结果**: ✅ 无冲突，成功同步
-
-### 会话 2: 并发编辑测试
-- **时间**: 2024-01-15 10:05:00
-- **参与者**: Client-A, Client-B
-- **操作**: 同时修改 conflict-test-area 的同一行文本
-- **结果**: 🔄 等待验证
-
-### 会话 3: 多客户端协作
-- **时间**: 2024-01-15 10:10:00
-- **参与者**: Client-A, Client-B, Client-C
-- **操作**: 三方同时编辑不同区块
-- **结果**: 🔄 等待验证
-
----
-id: 01234567-89ab-cdef-1234-56789012abcd
-type: markdown
-name: verification-checklist
-metadata:
-  description: "测试验证清单"
-  tags: ["verification", "checklist"]
-  critical: true
----
-# 验证清单
-
-## CRDT 同步验证
-
-### 无冲突编辑
-- [ ] Client-A 和 Client-B 分别编辑不同区块
-- [ ] 所有变更都成功同步到其他客户端
-- [ ] 文档状态在所有客户端上一致（相同的 hash 值）
-
-### 冲突编辑
-- [ ] Client-A 和 Client-B 同时编辑 conflict-test-area
-- [ ] CRDT 自动合并冲突内容
-- [ ] 合并结果符合预期（包含两方的修改）
-- [ ] 所有客户端的文档 hash 值相同
-
-## 性能验证
-- [ ] 同步延迟 < 500ms（本地网络）
-- [ ] 内存使用合理
-- [ ] 无内存泄漏
-
-## 可靠性验证
-- [ ] 网络中断后能够恢复同步
-- [ ] 客户端重启后能够获取完整历史
-- [ ] 并发操作不会导致数据丢失
-
----
-id: 12345678-9abc-def1-2345-6789012abcde
+id: a7b8c9d0-1234-0123-4567-89012ef01234
 type: code
-name: test-script-config
-metadata:
-  language: yaml
-  description: "自动化测试脚本的配置"
-  tags: ["config", "automation"]
+name: jwt-implementation
+attributes:
+  language: "python"
+  description: "JWT认证服务的基础实现"
+  tags: ["implementation", "jwt", "python"]
+  author: "Bob"
+  derived_from: ["bob-suggests-jwt", "charlie-security-concerns"]
 ---
-# 对话即文档测试配置
-test_config:
-  name: "conversation-as-document"
-  timeout_ms: 30000
-  
-  participants:
-    - id: "client-a"
-      zenoh_config:
-        endpoints: ["tcp/127.0.0.1:7447"]
-      test_actions:
-        - action: "create_block"
-          target: "test-block-a"
-          timestamp: 1000
-        - action: "edit_content"
-          target: "conflict-test-area"
-          new_text: "My initial content for conflict testing."
-          timestamp: 5000
-          
-    - id: "client-b"
-      zenoh_config:
-        endpoints: ["tcp/127.0.0.1:7447"]
-      test_actions:
-        - action: "create_block"
-          target: "test-block-b"
-          timestamp: 2000
-        - action: "edit_content"
-          target: "conflict-test-area"
-          new_text: "Our initial content for conflict testing."
-          timestamp: 5100
-  
-  verification:
-    - type: "hash_consistency"
-      description: "All clients have same document hash"
-      timeout_ms: 10000
-    - type: "content_merge"
-      description: "Conflict area contains both edits"
-      expected_pattern: "(?=.*My)(?=.*Our).*initial content"
-    - type: "block_count"
-      description: "All blocks are present"
-      expected_count: 7
+"""
+JWT认证服务实现
+基于团队讨论的技术方案
+"""
 
-  zenoh_network:
-    router: "tcp/127.0.0.1:7447"
-    discovery: "multicast"
-    storage_backend: "memory"
+import jwt
+import datetime
+from cryptography.hazmat.primitives import serialization
+from typing import Dict, Optional
+
+class JWTAuthService:
+    def __init__(self, private_key_path: str, public_key_path: str):
+        """
+        初始化JWT认证服务
+        
+        Args:
+            private_key_path: RSA私钥文件路径
+            public_key_path: RSA公钥文件路径
+        """
+        with open(private_key_path, 'rb') as f:
+            self.private_key = serialization.load_pem_private_key(
+                f.read(), password=None
+            )
+        
+        with open(public_key_path, 'rb') as f:
+            self.public_key = serialization.load_pem_public_key(f.read())
+    
+    def generate_access_token(self, user_id: str, role: str, 
+                            scopes: list = None) -> str:
+        """
+        生成Access Token (15分钟有效期)
+        
+        Args:
+            user_id: 用户ID
+            role: 用户角色
+            scopes: 权限范围列表
+            
+        Returns:
+            JWT access token字符串
+        """
+        if scopes is None:
+            scopes = ["read"]
+            
+        payload = {
+            "sub": user_id,
+            "role": role,
+            "scope": scopes,
+            "iat": datetime.datetime.utcnow(),
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=15),
+            "type": "access"
+        }
+        
+        return jwt.encode(payload, self.private_key, algorithm="RS256")
+    
+    def generate_refresh_token(self, user_id: str) -> str:
+        """
+        生成Refresh Token (7天有效期)
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            JWT refresh token字符串
+        """
+        payload = {
+            "sub": user_id,
+            "iat": datetime.datetime.utcnow(),
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(days=7),
+            "type": "refresh"
+        }
+        
+        return jwt.encode(payload, self.private_key, algorithm="RS256")
+    
+    def verify_token(self, token: str) -> Optional[Dict]:
+        """
+        验证并解析JWT token
+        
+        Args:
+            token: JWT token字符串
+            
+        Returns:
+            解析后的payload，验证失败返回None
+        """
+        try:
+            payload = jwt.decode(
+                token, 
+                self.public_key, 
+                algorithms=["RS256"],
+                options={"verify_exp": True}
+            )
+            return payload
+        except jwt.InvalidTokenError:
+            return None
+    
+    def refresh_access_token(self, refresh_token: str) -> Optional[str]:
+        """
+        使用refresh token获取新的access token
+        
+        Args:
+            refresh_token: 有效的refresh token
+            
+        Returns:
+            新的access token，刷新失败返回None
+        """
+        payload = self.verify_token(refresh_token)
+        
+        if not payload or payload.get("type") != "refresh":
+            return None
+            
+        user_id = payload.get("sub")
+        # 这里需要从数据库获取用户当前角色和权限
+        # user_info = get_user_info(user_id)
+        
+        return self.generate_access_token(
+            user_id=user_id,
+            role="user",  # 从数据库获取
+            scopes=["read", "write"]  # 从数据库获取
+        )
+
+# 使用示例
+def create_auth_service():
+    """创建认证服务实例"""
+    return JWTAuthService(
+        private_key_path="/path/to/private_key.pem",
+        public_key_path="/path/to/public_key.pem"
+    )
+
+# API端点示例
+def login_endpoint(username: str, password: str):
+    """登录API端点"""
+    # 验证用户凭据
+    if validate_credentials(username, password):
+        auth_service = create_auth_service()
+        user_id = get_user_id(username)
+        
+        access_token = auth_service.generate_access_token(
+            user_id=user_id, 
+            role="user",
+            scopes=["read", "write"]
+        )
+        refresh_token = auth_service.generate_refresh_token(user_id)
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "Bearer",
+            "expires_in": 900  # 15分钟
+        }
+    else:
+        return {"error": "Invalid credentials"}
+
+---
+id: b8c9d0e1-2345-1234-5678-9012ef012345
+type: relations
+name: document-relations
+attributes:
+  description: "管理文档中所有块间关系"
+  owner: "alice"
+  merge_method: "manual"
+  tags: ["reference", "traceability"]
+---
+# 文档内层级关系  
+jwt-implementation -> api-design-decision [implements] {}
+
+# 派生关系
+api-design-decision -> alice-opens-discussion [derived_from] {role: "产品需求来源"}
+api-design-decision -> bob-suggests-jwt [derived_from] {role: "技术方案来源"}
+api-design-decision -> charlie-security-concerns [derived_from] {role: "安全要求来源"}
+api-design-decision -> alice-final-decision [derived_from] {role: "最终决策依据"}
+
+# 实现关系
+jwt-implementation -> bob-suggests-jwt [derived_from] {type: "技术细节来源"}
+jwt-implementation -> charlie-security-concerns [derived_from] {type: "安全实现要求"}
+
+
+---
+id: d0e1f2a3-4567-3456-7890-12ef01234567
+type: recipe
+name: conversation-history
+attributes:
+  description: "生成完整对话历史的Recipe配置"
+  tags: ["recipe", "conversation", "timeline"]
+  output_type: "conversation_log"
+---
+name: conversation-history
+version: "1.0"
+description: "生成带时间线的完整对话历史文档"
+
+# 选择器：处理所有对话类型区块
+selector:
+  types: ["conversation"]
+  include_metadata: true
+
+# 转换规则：按时间顺序排列对话
+transform:
+  - type: "conversation"
+    action: "copy"
+    sort_by: "metadata.timestamp"
+    template: |
+      ## {{metadata.timestamp}} - {{metadata.speaker}} ({{metadata.role}})
+      
+      **话题**: {{metadata.topic}}
+      
+      {{content}}
+      
+      ---
+
+# 输出配置
+output:
+  format: "single-file"
+  filename: "conversation-history.md"
+  header: |
+    # {{document_meta.title}} - 对话记录
+    
+    **会议信息**:
+    - 日期: {{document_meta.created}}
+    - 参与者: {{#each document_meta.participants}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+    - 类型: {{document_meta.meeting_type}}
+    - 预计时长: {{document_meta.estimated_duration}}
+    
+    ## 对话时间线
+    
+  footer: |
+    
+    ---
+    
+    **对话总结**:
+    - 总发言数: {{conversation_count}}
+    - 讨论时长: {{discussion_duration}}
+    - 关键决策: 采用JWT认证方案
+    - 下步行动: 3周实施计划
+    
+    > 本文档由elfi自动生成，基于conversation区块内容  
+    > 生成时间: {{timestamp}}
+
+---
+id: e1f2a3b4-5678-4567-8901-2ef012345678
+type: recipe
+name: knowledge-extract
+attributes:
+  description: "提取结构化知识文档的Recipe配置"
+  tags: ["recipe", "knowledge", "documentation"]
+  output_type: "technical_doc"
+---
+name: knowledge-extract
+version: "1.0"
+description: "生成结构化的技术决策和实现文档"
+
+# 选择器：处理知识类型区块
+selector:
+  types: ["markdown", "code"]
+  exclude_metadata: ["timestamp", "speaker"]
+
+# 转换规则：按逻辑结构组织
+transform:
+  - type: "markdown"
+    action: "copy"
+    preserve_format: true
+    section_order: ["decision", "requirements", "implementation"]
+    
+  - type: "code"
+    action: "wrap"
+    template: |
+      ### 代码实现
+      
+      **文件**: `{{name}}.{{metadata.language}}`  
+      **作者**: {{metadata.author}}  
+      **说明**: {{metadata.description}}
+      
+      ```{{metadata.language}}
+      {{content}}
+      ```
+      
+      **关联讨论**: {{#each metadata.derived_from}}
+      - {{this}}
+      {{/each}}
+
+# 文档结构配置
+structure:
+  sections:
+    - title: "技术决策"
+      content_types: ["markdown"]
+      filter: "tags contains 'decision'"
+    - title: "实现代码"  
+      content_types: ["code"]
+      filter: "tags contains 'implementation'"
+    - title: "可追溯性"
+      content_types: ["link"]
+      template: |
+        ## 决策追溯
+        
+        本文档中的所有技术决策都可以追溯到原始讨论：
+        
+        {{#each link_blocks}}
+        - **{{source}}** ← {{#each targets}}{{this.name}} ({{this.relation}}){{#unless @last}}, {{/unless}}{{/each}}
+        {{/each}}
+
+# 输出配置
+output:
+  format: "single-file"
+  filename: "api-auth-design.md"
+  header: |
+    # API认证方案技术文档
+    
+    > 本文档基于{{document_meta.created}}的团队技术讨论  
+    > 参与者: {{#each document_meta.participants}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+    
+  footer: |
+    
+    ---
+    
+    **文档状态**: 已确认  
+    **实施状态**: 开发中  
+    **负责人**: Bob (实现), Charlie (安全), Alice (协调)  
+    
+    **修订历史**:
+    - v1.0 ({{document_meta.created}}): 初始版本，基于团队讨论确定
+    
+    > 📎 **完整对话记录**: 可通过 `elfi export --recipe=conversation-history` 获取  
+    > 🔗 **源文档**: {{source_uri}}  
+    > ⏰ **生成时间**: {{timestamp}}

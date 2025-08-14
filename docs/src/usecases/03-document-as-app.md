@@ -24,11 +24,24 @@
 
 ### 跨文档引用关系
 
-```
-main.elf                    component.elf
-├── placeholder-utils  ──→  ├── reusable-utilities
-├── dynamic-composition     ├── data-structures
-└── test-scenarios          └── algorithms
+```mermaid
+graph LR
+    subgraph "main.elf"
+        M1[placeholder-utils]
+        M2[dynamic-composition]
+        M3[test-scenarios]
+    end
+    
+    subgraph "component.elf"
+        C1[reusable-utilities]
+        C2[data-structures]
+        C3[algorithms]
+    end
+    
+    M1 --> C1
+    
+    style M1 fill:#e1f5fe
+    style C1 fill:#c8e6c9
 ```
 
 ## 关联的实现文档

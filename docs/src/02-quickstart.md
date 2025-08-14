@@ -879,9 +879,163 @@ sequenceDiagram
     BuildSystem->>Alice: 程序启动运行
 ```
 
+### 阶段9：对话即文档
+
+#### 需求场景
+Alice的团队需要进行API认证方案的技术讨论，并希望能够将会议对话转换为两种格式的文档：完整的对话历史记录和结构化的技术决策文档。
+
+#### 传统方式 vs. elfi 方式
+
+**传统方式：**
+- 开会时手动记录会议纪要
+- 会后整理成技术文档  
+- 文档和对话记录分离
+- 决策缺乏完整的上下文追溯
+
+**elfi 方式：**
+```bash
+# 创建会议讨论文档
+elfi open --new elf://my-project/api-discussion
+
+# Alice记录开场问题 (conversation类型)
+elfi add block --type conversation --name alice-question
+# 编辑内容：记录产品需求和认证方案问题
+
+# Bob记录技术建议 (conversation类型)
+elfi add block --type conversation --name bob-jwt-suggestion  
+# 编辑内容：JWT方案的优势和技术细节
+
+# Charlie记录安全考虑 (conversation类型)
+elfi add block --type conversation --name charlie-security
+# 编辑内容：安全要求和防护措施
+
+# Alice记录最终决策 (conversation类型)
+elfi add block --type conversation --name alice-decision
+# 编辑内容：确定技术方案和实施计划
+
+# 协作提炼知识 (markdown类型)
+elfi add block --type markdown --name api-design-decision
+# 编辑内容：基于对话整理的技术决策文档
+
+# 添加实现代码 (code类型)  
+elfi add block --type code --name jwt-implementation
+# 编辑内容：Bob提到的JWT认证服务实现
+
+# 建立追溯关系
+elfi link api-design-decision alice-question,bob-jwt-suggestion,charlie-security,alice-decision --type derived_from
+elfi link jwt-implementation api-design-decision --type implements
+
+# 生成双格式输出
+elfi export --recipe conversation-history ./conversation-log.md
+elfi export --recipe knowledge-extract ./api-design-doc.md
+```
+
+优势：
+- **完整记录**：保留对话的时间线、发言者和上下文
+- **知识提炼**：协作生成结构化的技术文档
+- **双重价值**：同一份源数据生成两种用途的文档
+- **可追溯性**：每个决策都可以追溯到具体的对话
+
+#### Recipe驱动的双输出
+
+**对话历史Recipe配置：**
+```yaml
+name: conversation-history
+selector:
+  types: ["conversation"]
+transform:
+  - type: "conversation"
+    action: "copy"
+    sort_by: "metadata.timestamp"
+    template: |
+      ## {{metadata.timestamp}} - {{metadata.speaker}} ({{metadata.role}})
+      **话题**: {{metadata.topic}}
+      {{content}}
+```
+
+**知识提取Recipe配置：**
+```yaml
+name: knowledge-extract  
+selector:
+  types: ["markdown", "code"]
+transform:
+  - type: "markdown"
+    action: "copy"
+    preserve_format: true
+  - type: "code"
+    action: "wrap"
+    template: |
+      ### 代码实现
+      **作者**: {{metadata.author}}
+      ```{{metadata.language}}
+      {{content}}
+      ```
+```
+
+#### 操作流程
+
+```mermaid
+sequenceDiagram
+    participant Alice
+    participant Bob
+    participant Charlie
+    participant ELFI
+    participant ELFFile as .elf 文件
+
+    Note over Alice, ELFFile: 对话即文档阶段
+    Alice->>ELFI: elfi open --new elf://my-project/api-discussion
+    ELFI->>ELFFile: 创建讨论文档
+    
+    Note over Alice, Charlie: 团队技术讨论
+    Alice->>ELFI: elfi add block --type conversation --name alice-question
+    ELFI->>ELFFile: 记录Alice的开场问题
+    
+    Bob->>ELFI: elfi add block --type conversation --name bob-jwt-suggestion
+    ELFI->>ELFFile: 记录Bob的JWT方案建议
+    
+    Charlie->>ELFI: elfi add block --type conversation --name charlie-security
+    ELFI->>ELFFile: 记录Charlie的安全考虑
+    
+    Alice->>ELFI: elfi add block --type conversation --name alice-decision
+    ELFI->>ELFFile: 记录Alice的最终决策
+    
+    Note over Alice, Charlie: 协作提炼知识
+    Alice->>ELFI: elfi add block --type markdown --name api-design-decision
+    ELFI->>ELFFile: 创建设计决策文档
+    
+    Bob->>ELFI: elfi add block --type code --name jwt-implementation
+    ELFI->>ELFFile: 添加JWT实现代码
+    
+    Alice->>ELFI: elfi link api-design-decision <conversations> --type derived_from
+    ELFI->>ELFFile: 建立追溯关系
+    
+    Note over Alice, ELFFile: Recipe双输出
+    Alice->>ELFI: elfi export --recipe conversation-history ./conversation-log.md
+    ELFI->>ELFFile: 生成完整对话历史
+    
+    Alice->>ELFI: elfi export --recipe knowledge-extract ./api-design-doc.md
+    ELFI->>ELFFile: 生成结构化技术文档
+```
+
+#### 输出示例
+
+**对话历史文档 (conversation-log.md)：**
+- 完整的时间线记录
+- 每个发言的角色和话题标记
+- 原始对话内容保持不变
+- 会议统计和总结信息
+
+**技术决策文档 (api-design-doc.md)：**
+- 结构化的技术方案描述
+- 代码实现示例
+- 决策追溯信息
+- 实施计划和负责人
+
+这个阶段展示了 `elfi` 在处理复杂内容转换和知识管理方面的强大能力，将实时对话无缝转换为有价值的技术文档。
+
 ## 总结
 
-上面的 8 个阶段展示了 elfi 的完整工作流程。下图展示了各个环节的关系和决策点：
+上面的 9 个阶段展示了 elfi 的完整工作流程。下图展示了各个环节的关系和决策点：
 
 ```mermaid
 flowchart TD
@@ -906,7 +1060,10 @@ flowchart TD
     IDEMode -->|否| BuildDeploy[阶段8: 构建部署]
     IDEIntegration --> BuildDeploy
     
-    BuildDeploy --> End([结束])
+    BuildDeploy --> ConversationDoc{需要对话转文档?}
+    ConversationDoc -->|是| Stage9[阶段9: 对话即文档]
+    ConversationDoc -->|否| End([结束])
+    Stage9 --> End
     
 ```
 

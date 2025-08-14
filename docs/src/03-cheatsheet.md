@@ -38,10 +38,12 @@ elfi 使用三层标识符系统：
 | add | block | - | --type, --name, --merge_method, --parent | 添加新区块 |
 
 **参数说明：**
-- `--type`: 区块类型（markdown, code, python, recipe等）
+- `--type`: 区块类型（**完全用户自定义**，如：markdown, code, my_custom_type 等）
 - `--name`: 人类可读的区块标识符
-- `--merge_method`: 合并策略（CRDT或manual）
+- `--merge_method`: 合并策略（**用户定义**，如：crdt, manual, custom_strategy 等）
 - `--parent`: 父区块ID
+
+**⚠️ 重要**：所有类型和策略名称都由项目自定义，elfi 不强制任何特定值。
 
 **示例：**
 - `elfi add block --type markdown --name block-001` 
@@ -59,19 +61,39 @@ elfi 使用三层标识符系统：
 
 | 一级命令 | 二级命令 | 必选参数 | 可选参数 | 说明 |
 |---------|---------|---------|---------|------|
-| link | - | from-id, to-id | --type | 建立区块关联 |
+| link | - | from-uri, to-uri | --type, --props | 建立区块关联 |
 | link | list | - | - | 列出所有链接 |
-| link | show | block-id | - | 查看特定区块的关联 |
-| link | remove | from-id, to-id | - | 删除链接 |
+| link | show | block-uri | - | 查看特定区块的关联 |
+| link | remove | from-uri, to-uri | - | 删除链接 |
 
-**关系类型：**
-- `implements`: 实现关系
-- `depends`: 依赖关系
-- `extends`: 扩展关系
+**URI格式支持：**
+- **完整URI**: `elf://[user/]repo/doc#block-name`
+- **相对引用**: `./doc#block-name` (同仓库) | `#block-name` (同文档)
+- **块名称**: `block-name` (同文档内简写)
+
+**⚠️ 重要说明**：**关系类型完全由用户定义**，elfi 不限制关系类型。
+
+**常用约定关系类型**（仅为建议示例）：
+- `child_of` / `parent_of`: 层级关系（用户约定）
+- `references`: 一般引用关系（用户约定）
+- `includes`: 内容包含关系（用户约定）
+- `derived_from`: 派生关系（用户约定）
+- `implements`: 实现关系（用户约定）
+- `depends_on`: 依赖关系（用户约定）
+
+**项目自定义关系示例**：
+- **软件项目**: `tests`, `documents`, `reviews`, `replaces`
+- **学术研究**: `cites`, `supports`, `contradicts`, `builds_upon`
+- **业务流程**: `approves`, `blocks`, `triggers`, `requires`
+
+**关系属性 (--props)：**
+支持JSON格式的关系属性，如：`--props '{"display_text": "共享工具", "weight": 1.0}'`
 
 **示例：**
 - `elfi link block-002 block-001 --type "implements"` - 建立实现关系
+- `elfi link #setup-code elf://shared-lib/utils#helpers --type "references" --props '{"display_text": "工具函数"}'` - 跨文档引用
 - `elfi link show block-001` - 查看block-001的关联
+- `elfi link ./components#header ./styles#header-css --type "depends_on"` - 相对引用
 
 ### 📤 export - 内容导出
 
@@ -259,7 +281,7 @@ elfi close elf://my-project/doc             # 关闭文档
 ```bash
 elfi open elf://my-project/doc/block-002    # Bob打开共享文档
 elfi add block --name=block-003             # Bob添加新区块
-elfi link block-003 block-002 --type "depends"  # 建立依赖关系
+elfi link block-003 block-002 --type "depends_on"  # 建立依赖关系
 ```
 
 ### 5. 冲突处理

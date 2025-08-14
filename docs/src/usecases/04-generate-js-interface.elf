@@ -1,0 +1,344 @@
+---
+id: f47ac10b-58cc-4372-a567-0e02b2c3d479
+type: markdown
+name: introduction
+---
+# TypeScript 接口生成示例
+
+本示例展示如何使用 ELFI 作为通用编程库，通过用户定义的类型系统生成 TypeScript 接口代码。这演示了 ELFI 的核心设计理念：**结构与语义分离** - ELFI 提供结构化文档能力，具体的类型定义和业务语义完全由用户自定义。
+
+## 设计理念
+
+- **用户定义类型**：`api_interface` 类型完全由此项目定义，ELFI 系统不预设任何 API 相关的语义
+- **代码生成而非语言绑定**：这是使用 .elf 格式生成代码，与 Extension 系统的语言绑定不同
+- **Recipe 驱动转换**：通过 Recipe 系统将结构化的接口定义转换为 TypeScript 代码
+
+---
+id: a1b2c3d4-5e6f-7890-1234-56789abcdef0  
+type: api_interface
+name: user-service-api
+attributes:
+  description: "用户服务的核心 API 接口定义"
+  version: "v1.0.0"
+  author: "API 设计团队"
+  namespace: "UserService"
+---
+interface UserServiceApi {
+  /**
+   * 获取用户基本信息
+   * @param userId 用户唯一标识符
+   * @returns 用户信息对象或null
+   */
+  getUser(userId: string): Promise<User | null>;
+  
+  /**
+   * 创建新用户
+   * @param userData 用户注册数据
+   * @returns 创建的用户信息
+   */
+  createUser(userData: CreateUserRequest): Promise<User>;
+  
+  /**
+   * 更新用户信息
+   * @param userId 用户ID
+   * @param updates 更新数据
+   * @returns 更新后的用户信息
+   */
+  updateUser(userId: string, updates: Partial<UpdateUserRequest>): Promise<User>;
+  
+  /**
+   * 删除用户
+   * @param userId 用户ID
+   * @returns 删除操作是否成功
+   */
+  deleteUser(userId: string): Promise<boolean>;
+  
+  /**
+   * 搜索用户
+   * @param query 搜索条件
+   * @returns 用户列表和分页信息
+   */
+  searchUsers(query: SearchUsersRequest): Promise<SearchUsersResponse>;
+}
+
+---
+id: b2c3d4e5-6f78-9012-3456-789abcdef012
+type: api_interface  
+name: user-data-types
+attributes:
+  description: "用户相关的数据类型定义"
+  parent: a1b2c3d4-5e6f-7890-1234-56789abcdef0
+  category: "data_types"
+---
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string;
+  avatar?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  profile: UserProfile;
+}
+
+interface UserProfile {
+  firstName: string;
+  lastName: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  socialLinks: SocialLinks;
+}
+
+interface SocialLinks {
+  twitter?: string;
+  github?: string;
+  linkedin?: string;
+}
+
+interface CreateUserRequest {
+  username: string;
+  email: string;
+  password: string;
+  profile: Omit<UserProfile, 'socialLinks'> & {
+    socialLinks?: Partial<SocialLinks>;
+  };
+}
+
+interface UpdateUserRequest {
+  displayName?: string;
+  avatar?: string;
+  profile?: Partial<UserProfile>;
+}
+
+interface SearchUsersRequest {
+  query?: string;
+  filters?: {
+    location?: string;
+    createdAfter?: Date;
+    createdBefore?: Date;
+  };
+  pagination?: {
+    page: number;
+    limit: number;
+  };
+  sortBy?: 'createdAt' | 'username' | 'displayName';
+  sortOrder?: 'asc' | 'desc';
+}
+
+interface SearchUsersResponse {
+  users: User[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalCount: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
+}
+
+---
+id: c3d4e5f6-7890-1234-5678-9abcdef01234
+type: api_interface
+name: error-types  
+attributes:
+  description: "API 错误类型定义"
+  parent: a1b2c3d4-5e6f-7890-1234-56789abcdef0
+  category: "error_handling"
+---
+interface ApiError {
+  code: string;
+  message: string;
+  details?: Record<string, any>;
+  timestamp: Date;
+}
+
+interface ValidationError extends ApiError {
+  code: 'VALIDATION_ERROR';
+  fieldErrors: FieldError[];
+}
+
+interface FieldError {
+  field: string;
+  message: string;
+  rejectedValue?: any;
+}
+
+interface NotFoundError extends ApiError {
+  code: 'NOT_FOUND';
+  resourceType: string;
+  resourceId: string;
+}
+
+interface ConflictError extends ApiError {
+  code: 'CONFLICT';
+  conflictType: 'username_taken' | 'email_taken' | 'resource_modified';
+}
+
+---
+id: d4e5f678-9012-3456-7890-abcdef012345
+type: recipe
+name: typescript-generator
+attributes:
+  description: "生成 TypeScript 接口代码的转换配方"
+  target_language: "typescript"
+  output_format: "module"
+---
+name: "typescript-interface-generator"
+version: "1.0.0"
+description: "将用户定义的 api_interface 类型转换为 TypeScript 代码"
+
+# 选择器配置 - 选择要处理的内容块
+selector:
+  types: ["api_interface"]  # 用户自定义的类型，ELFI 系统不预设此类型的含义
+  attributes:
+    # 可以根据用户定义的属性进行过滤
+    category: ["interface", "data_types", "error_handling"]
+  names: ["user-service-api", "user-data-types", "error-types"]
+
+# 转换管道配置
+transform:
+  # 第一步：解析接口内容并提取类型信息
+  - type: "content_parser"
+    action: "extract_typescript_interfaces"
+    config:
+      preserve_comments: true
+      validate_syntax: true
+      
+  # 第二步：应用代码格式化和标准化
+  - type: "code_formatter"  
+    action: "format_typescript"
+    config:
+      indent_style: "spaces"
+      indent_size: 2
+      quote_style: "single"
+      trailing_comma: "es5"
+      
+  # 第三步：生成模块导入导出结构
+  - type: "module_generator"
+    action: "create_typescript_module"
+    template: |
+      // 自动生成的 TypeScript 接口
+      // 生成时间: {{timestamp}}
+      // 来源文档: {{source_document}}
+      
+      {{#each interfaces}}
+      {{this}}
+      
+      {{/each}}
+      
+      // 导出所有类型
+      export type {
+        {{#each type_names}}
+        {{this}},
+        {{/each}}
+      };
+
+# 错误处理配置  
+error_handling:
+  on_syntax_error: "skip_with_warning"  # TypeScript 语法错误时跳过并警告
+  on_missing_reference: "placeholder"   # 缺少引用时使用占位符
+  on_type_conflict: "user_defined_wins" # 类型冲突时以用户定义为准
+
+# 输出配置
+output:
+  format: "typescript"
+  filename: "{{namespace | lower}}-api.ts"  # 基于用户定义的 namespace 属性
+  header: |
+    /**
+     * {{description}}
+     * Version: {{version}}
+     * Generated from ELFI document
+     * 
+     * 注意：这些类型定义完全由用户在 .elf 文档中定义
+     * ELFI 系统只负责结构化存储和代码生成转换
+     */
+  footer: |
+    
+    // 生成统计信息
+    // 接口数量: {{interface_count}}
+    // 类型数量: {{type_count}}
+    // 生成时间: {{generation_time}}
+
+---
+id: e5f67890-1234-5678-90ab-cdef01234567
+type: markdown
+name: usage-instructions
+attributes:
+  description: "使用说明和生成的代码示例"
+---
+## 使用方式
+
+### 1. 执行 Recipe 生成代码
+
+```bash
+# 使用 ELFI CLI 执行代码生成
+elfi export 04-generate-js-interface.elf typescript-generator ./output/
+
+# 或者指定具体输出文件
+elfi export 04-generate-js-interface.elf typescript-generator userservice-api.ts
+```
+
+### 2. 集成到项目中
+
+生成的 TypeScript 文件可以直接集成到项目中：
+
+```typescript
+// 导入生成的类型
+import type { 
+  UserServiceApi, 
+  User, 
+  CreateUserRequest,
+  ApiError 
+} from './userservice-api';
+
+// 在应用中使用
+class UserServiceImpl implements UserServiceApi {
+  async getUser(userId: string): Promise<User | null> {
+    // 实现逻辑
+  }
+  
+  async createUser(userData: CreateUserRequest): Promise<User> {
+    // 实现逻辑  
+  }
+  
+  // ... 其他方法实现
+}
+```
+
+### 3. 自动化集成
+
+可以将代码生成集成到构建流程中：
+
+```json
+{
+  "scripts": {
+    "generate-types": "elfi export docs/api-spec.elf typescript-generator src/types/",
+    "prebuild": "npm run generate-types"
+  }
+}
+```
+
+## 设计说明
+
+### 用户定义的类型系统
+
+这个示例中的 `api_interface` 类型**完全由此项目定义**：
+
+- ELFI 系统不预设 `api_interface` 的任何语义
+- 类型的含义、验证规则、处理逻辑都由用户决定
+- ELFI 只负责解析、存储和传递这些用户定义的内容
+
+### 与 Extension 系统的区别
+
+- **代码生成**（本示例）：使用 .elf 文件和 Recipe 系统生成代码，无需安装额外组件
+- **Extension 系统**：通过 `elfi install` 安装的插件，可以扩展 ELFI 的核心功能
+
+### 扩展性
+
+用户可以根据需要：
+- 定义新的接口类型（如 `grpc_service`, `rest_api`, `graphql_schema`）
+- 创建自定义的 Recipe 生成不同格式的代码
+- 通过 Extension 系统添加更复杂的代码生成逻辑
+
+这体现了 ELFI **结构与语义分离** 的核心设计理念。

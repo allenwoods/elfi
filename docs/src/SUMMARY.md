@@ -4,7 +4,7 @@
 [快速开始](./02-quickstart.md)
 [命令速查表](./03-cheatsheet.md)
 
-# 架构
+# 设计文档
 
 - [数据建模](./designs/01-data_modeling.md)
 - [存储与同步](./designs/02-storage_sync.md)
@@ -14,18 +14,21 @@
 
 ---
 
-# 实现设计
+# 实现文档
 
-- [概述](./implementations/00-overview.md)
-- [格式与解析器](./implementations/01-parser_and_format.md)
-- [核心逻辑](./implementations/02-core_logic.md)
-    - [命令行界面](./implementations/03-cli.md)
-    - [链接与转译](./implementations/04-linking_and_transclusion.md)
+- [整体架构](./implementations/00-overview.md)
+- [.elf 文件规范](./implementations/01-elf_spec.md)
+- [数据模型实现](./implementations/02-data_model.md)
+- [共享核心功能](./implementations/03-core.md)
+- [内容创作层](./implementations/04-weave.md)
+- [渲染执行层](./implementations/05-tangle.md)
+- [多语言封装](./implementations/06-wrapper.md)
+- [插件扩展系统](./implementations/07-extension.md)
 
 # 使用场景
-- [自举](./usecases/01-bootstrapping.md)
+- [自举开发](./usecases/01-bootstrapping.md)
 - [对话即文档](./usecases/02-conversation-as-document.md)
-- [文档即 App](./usecases/03-document-as-app.md)
+- [文档即应用](./usecases/03-document-as-app.md)
 
 ---
 
