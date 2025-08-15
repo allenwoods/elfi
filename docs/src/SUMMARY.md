@@ -19,7 +19,8 @@
 
 - [整体架构](./implementations/00-overview.md)
 - [.elf 文件规范](./implementations/01-elf_spec.md)
-- [数据模型实现](./implementations/02-data_model.md)
+- [Types模块：核心数据结构实现](./implementations/02-data_model.md)
+- [Types模块：API参考文档](./implementations/02-types-api.md)
 - [共享核心功能](./implementations/03-core.md)
 - [内容创作层](./implementations/04-weave.md)
 - [渲染执行层](./implementations/05-tangle.md)
@@ -35,4 +36,5 @@
 
 # API 参考
 
-- [Rust API 文档 (即将推出)](../target/doc/elfi/index.html)
+- [Types 模块 API](./implementations/02-types-api.md)
+- [Rust API 文档](../target/doc/types/index.html)
