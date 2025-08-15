@@ -7,18 +7,33 @@ install-tools:
 
 # Setup mermaid support
 setup: install-tools
+    #!/usr/bin/env bash
+    export PATH="$HOME/.cargo/bin:$PATH"
     mdbook-mermaid install .
 
 # Build the documentation
 build:
+    #!/usr/bin/env bash
+    export PATH="$HOME/.cargo/bin:$PATH"
+    mdbook build
+
+# Build with API docs integration
+build-with-api:
+    #!/usr/bin/env bash
+    export PATH="$HOME/.cargo/bin:$PATH"
+    (cd .. && cargo doc --no-deps)
     mdbook build
 
 # Serve the documentation locally with auto-reload
 serve:
+    #!/usr/bin/env bash
+    export PATH="$HOME/.cargo/bin:$PATH"
     mdbook serve --open
 
 # Clean build artifacts
 clean:
+    #!/usr/bin/env bash
+    export PATH="$HOME/.cargo/bin:$PATH"
     mdbook clean
 
 # Generate merged markdown documentation

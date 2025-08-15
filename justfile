@@ -12,7 +12,11 @@ build-release:
 test:
     cargo test
 
-# Build the documentation
+# Generate API documentation
+docs-api:
+    cargo doc --no-deps
+
+# Build the user documentation  
 # This command changes into the 'docs' directory and runs the 'build' command from its own justfile
 docs-build:
     (cd docs && just build)

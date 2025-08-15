@@ -1,5 +1,5 @@
 //! 错误类型定义
-//! 
+//!
 //! 开发者实现区域 - 请实现TypesError和相关错误处理
 
 // ============ 开发者实现区域 开始 ============
@@ -9,19 +9,19 @@
 pub enum TypesError {
     #[error("Document validation failed: {message}")]
     DocumentValidation { message: String },
-    
+
     #[error("Block validation failed: {message}")]
     BlockValidation { message: String },
-    
+
     #[error("Relation validation failed: {message}")]
     RelationValidation { message: String },
-    
+
     #[error("Serialization error: {source}")]
     Serialization { source: serde_json::Error },
-    
+
     #[error("Not found: {item}")]
     NotFound { item: String },
-    
+
     #[error("Invalid format: {details}")]
     InvalidFormat { details: String },
 }

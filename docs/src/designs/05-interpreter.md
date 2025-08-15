@@ -33,21 +33,14 @@
 
 `elfi-core` crate是整个系统的核心，其内部模块结构和暴露的公共API经过精心设计，以清晰地分离关注点。
 
-### 6.4.1. 模块结构
+### 6.4.1. 模块结构设计
 
-```
-// elfi-core/src/lib.rs
+`elfi-core`的模块结构遵循清晰的分层原理：
 
-// 公共API模块
-pub mod doc;      // 对应Weave层API，用于内容创作和协作
-pub mod render;   // 对应Tangle层API，用于渲染和执行
-pub mod error;    // 定义库的公共错误类型
-
-// 内部实现模块
-mod sync;     // 管理Zenoh会话和网络同步逻辑
-mod store;    // 管理内存中的Automerge文档实例集合
-mod exec;     // 管理代码执行环境的交互（如Jupyter协议）
-```
+**公共API层**：对外暴露Weave和Tangle API，提供稳定的编程接口
+**错误处理层**：统一的错误类型定义和处理机制
+**内部实现层**：封装网络同步、数据存储、代码执行等核心功能
+**模块间解耦**：通过明确的接口定义实现模块间的松耦合
 
 ### 6.4.2. 暴露的接口
 
@@ -68,30 +61,9 @@ mod exec;     // 管理代码执行环境的交互（如Jupyter协议）
         -   `exec`模块将使用一个现有的Jupyter协议客户端库（如`jupyter-protocol` [32, 33]）来连接到一个标准的Jupyter内核（如IPython）。
         -   它将代码块的内容通过Jupyter消息协议发送给内核执行，并将内核返回的输出（`stdout`, `display_data`等）封装成`ExecutionEvent`枚举，通过异步流返回给调用者。
 
--   **错误处理 (`pub mod error`)**:
+-   **错误处理设计**：采用结构化错误类型设计，提供了以下优势：
 
-    -   这个模块将定义整个库的公共错误类型。遵循Rust库设计的最佳实践，我们将使用`thiserror` crate来创建一个结构化的、详尽的`enum ElfiError` [34, 35]。
-
-    ```
-    use thiserror::Error;
-    
-    #
-    pub enum ElfiError {
-        #[error("Network error: {0}")]
-        Network(#[from] zenoh::Error),
-    
-        #
-        DataModel(#[from] automerge::AutomergeError),
-    
-        #[error("Parsing error: {0}")]
-        Parse(String), // 来自elfi-parser的错误
-    
-        #
-        DocumentNotFound(String),
-    
-        #[error("Execution error: {0}")]
-        Execution(String),
-    }
-    ```
-
-    -   这种设计为`elfi-core`的消费者提供了强大的能力，使其可以编程方式地匹配和处理不同类型的故障，这对于构建健壮的应用程序至关重要。与之相对，`elfi-cli`则会使用`anyhow`来包装来自`elfi-core`的`ElfiError`，并添加上下文信息，以便向最终用户提供清晰的错误报告 [36]。
+    **分类明确**：按照错误来源（网络、数据模型、解析等）进行分类
+    **信息传递**：支持错误链式传递，保留底层错误信息
+    **上下文化**：在CLI层添加上下文信息，提供用户友好的错误报告
+    **可编程性**：使得应用程序可以精确处理特定类型的错误

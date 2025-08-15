@@ -134,28 +134,9 @@ Weave层将提供一个专门的API来查询特定属性上的并发写入冲突
 
 结合`getConflicts` API，应用程序可以实现一个强大的、用户驱动的冲突解决流程：
 
-1.  **检测与呈现**：
+1.  **检测与呈现**：应用程序通过订阅机制监听文档状态变化，主动检测关键属性的冲突情况，并通过直观的UI界面向用户呈现不同的并发修改版本，帮助用户理解冲突的性质和范围。
 
-    -   应用程序通过`handle.subscribe`监听文档的任何变化。
-    -   在回调函数中，当检测到文档状态更新（特别是合并了远程更改后），应用程序可以主动调用`handle.getConflicts`来检查关键属性是否存在冲突。
-    -   例如，在处理一个代码块时，UI代码可以检查`handle.getConflicts(['blocks', blockIndex, 'content'])`。
-    -   如果返回了一个包含多个值的`Map`，UI层可以将这些不同的版本呈现给用户。例如，并排显示两个版本的代码，并询问用户：“Alice和Bob同时修改了这段代码，请选择要保留的版本，或手动合并它们。”
-
-2.  **解决与提交**：
-
-    -   一旦用户做出了选择（例如，选择了Bob的版本，或者手动编辑了一个合并后的新版本），应用程序将获取这个最终的、被认可的内容。
-    -   然后，应用程序会发起一次**新的 `handle.change` 操作**，将这个最终内容写入到之前发生冲突的属性路径上。
-
-    ```
-    // 假设用户选择了Bob写入的值
-    const finalContent = bobVersion; 
-    
-    handle.change(doc => {
-      doc.blocks[blockIndex].content.replaceAll(finalContent);
-    });
-    ```
-
-    -   这次新的`change`操作会在CRDT的因果历史中创建一个新的节点，该节点将所有先前冲突的“头”（heads）作为其父节点。这就在语义上解决了冲突，并确保所有协作者的文档状态都会收敛到这个由用户确认的、唯一的最终状态。
+2.  **解决与提交**：用户做出决策后，应用程序通过新的修改操作将最终内容提交到CRDT中。这种机制在因果历史中创建一个新节点，将所有冲突的分支合并为一个一致的状态，确保所有协作者都收敛到用户确认的最终结果。
 
 这个工作流清晰地划分了职责：CRDT负责在合并期间**无损地保存所有信息**；Weave API负责将这些冲突信息**透明地暴露给应用程序**；最终，应用程序和用户负责运用**领域知识和语义理解**来做出最终的裁决。
 
@@ -203,39 +184,12 @@ elfi watch --types code,markdown --sync-mode bidirectional
 
 ### 4.5.4. 监听与同步实现
 
-```rust
-// elfi watch 命令的核心实现
-impl WatchService {
-    async fn handle_file_change(&self, path: PathBuf, content: String) {
-        // 1. 验证文件是否为有效的同步目标
-        if let Some(block_mapping) = self.get_block_mapping(&path) {
-            // 2. 检查同步条件
-            if self.validate_sync_conditions(&block_mapping, &content) {
-                // 3. 检查Recipe依赖影响
-                let affected_recipes = self.find_dependent_recipes(&block_mapping.block_id);
-                
-                // 4. 应用变更到对应区块
-                self.apply_change_to_block(block_mapping.block_id, content).await;
-                
-                // 5. 重新执行受影响的Recipe
-                for recipe_id in affected_recipes {
-                    self.queue_recipe_execution(recipe_id).await;
-                }
-            } else {
-                // 6. 报告同步冲突
-                self.report_sync_conflict(&path, &content);
-            }
-        }
-    }
-    
-    async fn start_watch_mode(&self, config: WatchConfig) {
-        // 启动文件监听
-        let watcher = notify::recommended_watcher(move |res| {
-            // 处理文件系统事件
-        }).unwrap();
-        
-        // 同时启动Zenoh订阅以接收远程变更
-        self.subscribe_to_document_changes().await;
-    }
-}
+### 4.5.5. 监听服务架构设计
+
+`elfi watch`命令的核心设计基于以下架构原理：
+
+**双向同步机制**：同时监听文件系统变更和远程文档变更，实现真正的双向同步
+**条件验证策略**：确保只有满足安全条件的修改才能同步，避免数据不一致
+**依赖传播处理**：自动检测和处理Recipe依赖关系，确保相关内容的一致性
+**冲突优雅处理**：提供清晰的冲突报告和解决建议，保持用户工作流的连续性
 

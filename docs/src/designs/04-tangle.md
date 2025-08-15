@@ -133,63 +133,14 @@ execution:
 
 Recipe系统需要特殊处理Link Block类型的区块：
 
-#### Link Block识别与解析
+#### Link Block处理机制
 
-```rust
-impl RecipeEngine {
-    async fn process_link_blocks(&self, recipe: &Recipe) -> Result<ProcessedContent, RecipeError> {
-        let mut link_resolver = LinkResolver::new(&self.zenoh_session);
-        let mut resolved_content = HashMap::new();
-        
-        // 1. 识别所有需要解析的Link Block
-        for reference in &recipe.references {
-            match link_resolver.resolve_uri(&reference.source).await {
-                Ok(content) => {
-                    resolved_content.insert(reference.target.clone(), content);
-                }
-                Err(e) => {
-                    // 2. 根据错误处理策略处理失败情况
-                    self.handle_reference_error(reference, e, &recipe.error_handling)?;
-                }
-            }
-        }
-        
-        // 3. 将解析的内容注入到Recipe执行上下文
-        Ok(ProcessedContent {
-            local_blocks: self.select_local_blocks(&recipe.selector),
-            resolved_references: resolved_content,
-        })
-    }
-    
-    fn handle_reference_error(
-        &self, 
-        reference: &Reference, 
-        error: RefError, 
-        error_config: &ErrorHandling
-    ) -> Result<(), RecipeError> {
-        match (&error, &error_config.on_missing_reference) {
-            (RefError::NotFound, "placeholder") => {
-                // 使用占位符内容
-                self.inject_placeholder(reference);
-                Ok(())
-            }
-            (RefError::NotFound, "skip") => {
-                // 跳过此引用，继续处理
-                self.skip_reference(reference);
-                Ok(())
-            }
-            (RefError::NotFound, "error") => {
-                // 抛出错误，停止执行
-                Err(RecipeError::MissingReference(reference.source.clone()))
-            }
-            (RefError::CircularRef, _) => {
-                // 循环引用总是错误
-                Err(RecipeError::CircularReference)
-            }
-            _ => Ok(())
-        }
-    }
-}
+Recipe系统处理Link Block的核心设计原理：
+
+**预先解析策略**：在Recipe执行前批量解析所有Link Block引用，提高执行效率
+**错误容错机制**：提供多种错误处理策略，确保部分失败不影响整体Recipe执行
+**内容集成策略**：将外部内容无缝集成到Recipe执行上下文中
+**循环依赖检测**：防止跨文档引用形成循环依赖，保证系统稳定性
 ```
 
 ### 5.5.6. Recipe与Islands Architecture的集成
@@ -198,43 +149,14 @@ impl RecipeEngine {
 
 Recipe系统支持创建动态的岛屿组件：
 
-```javascript
-// Recipe驱动的岛屿组件示例
-class RecipeIsland extends Component {
-    constructor(recipeId, dependencies) {
-        super();
-        this.recipeId = recipeId;
-        this.dependencies = dependencies;
-        this.content = null;
-    }
-    
-    async hydrate() {
-        // 1. 订阅Recipe的依赖变更
-        for (const dep of this.dependencies) {
-            await this.subscribeToReference(dep);
-        }
-        
-        // 2. 执行Recipe获取初始内容
-        this.content = await this.executeRecipe();
-        
-        // 3. 渲染内容到岛屿
-        this.render();
-    }
-    
-    async onReferenceChange(reference, newContent) {
-        // 4. 依赖变更时重新执行Recipe
-        this.content = await this.executeRecipe();
-        this.render();
-    }
-    
-    async pinState(newState) {
-        // 5. 将岛屿状态变更反向同步到CRDT
-        await tangleApi.pinBlockState(this.docUrl, this.recipeId, {
-            last_execution: Date.now(),
-            user_overrides: newState
-        });
-    }
-}
+#### Recipe岛屿的架构设计
+
+Recipe驱动的Islands架构基于以下设计原理：
+
+**依赖追踪机制**：自动监听和追踪Recipe依赖的跨文档内容变更
+**响应式重渲染**：依赖内容变更时自动重新执行Recipe并更新UI
+**状态双向同步**：支持将岛屿内部状态反向同步到CRDT文档中
+**生命周期管理**：提供完整的岛屿组件生命周期管理机制
 ```
 
 #### Recipe岛屿的生命周期管理
@@ -250,24 +172,12 @@ class RecipeIsland extends Component {
 
 Recipe系统需要处理复杂的网络依赖场景：
 
-```mermaid
-sequenceDiagram
-    participant U as 用户浏览器
-    participant T as Tangle引擎
-    participant Z as Zenoh网络
-    participant R1 as 仓库1
-    participant R2 as 仓库2
-    
-    U->>T: 请求渲染包含Recipe的页面
-    T->>T: 解析Recipe配置
-    T->>Z: 并行查询外部依赖
-    Z->>R1: 获取依赖A
-    Z->>R2: 获取依赖B
-    R1->>Z: 返回内容A
-    R2->>Z: 返回内容B
-    Z->>T: 聚合所有依赖
-    T->>T: 执行Recipe转换
-    T->>U: 返回最终渲染结果
+分布式Recipe执行的设计模式基于以下原理：
+
+**并行依赖解析**：同时查询多个外部依赖，最大化利用网络并发性
+**聚合处理策略**：将所有依赖内容聚合后再执行转换，确保一致性
+**渐进式渲染**：优先返回可用内容，然后渐进式加载依赖内容
+**错误传播机制**：将依赖解析错误透明传播给用户，提供明确的错误信息
 ```
 
 #### 网络优化策略
@@ -294,21 +204,14 @@ sequenceDiagram
 
 #### 错误处理的用户体验
 
-```typescript
-interface RecipeExecutionResult {
-    success: boolean;
-    content: string;
-    warnings: Warning[];
-    errors: Error[];
-    dependencies: DependencyStatus[];
-}
+### 5.5.8. Recipe执行结果模型
 
-interface DependencyStatus {
-    uri: string;
-    status: 'resolved' | 'cached' | 'failed' | 'timeout';
-    last_updated: Date;
-    error_message?: string;
-}
+Recipe执行结果的设计原理基于以下考虑：
+
+**结果分类**：区分成功、警告、错误等不同级别的执行结果
+**依赖状态追踪**：详细记录每个外部依赖的解析状态和时间戳
+**错误信息传播**：提供详细的错误信息和修复建议
+**状态连续性**：支持部分成功的渐进式结果返回
 ```
 
 用户界面应当清晰展示Recipe执行状态：

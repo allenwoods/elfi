@@ -54,23 +54,12 @@
 
 #### URI解析与路由
 
-```rust
-// 跨文档引用的解析流程
-async fn resolve_cross_document_reference(uri: &str) -> Result<BlockContent, RefError> {
-    // 1. 解析URI格式 elf://[user/]repo/doc[#block-name]
-    let parsed = parse_elf_uri(uri)?;
-    
-    // 2. 通过Zenoh查询目标文档
-    let doc_key = format!("/elf/docs/{}/{}/{}", parsed.user, parsed.repo, parsed.doc);
-    let query_result = zenoh_session.get(&doc_key).await?;
-    
-    // 3. 在目标文档中查找指定区块
-    if let Some(block_name) = parsed.block_name {
-        return find_block_by_name(&query_result.doc, &block_name);
-    }
-    
-    Ok(query_result.doc)
-}
+跨文档引用的解析流程遵循以下设计原理：
+
+**URI标准化**：统一的URI格式确保跨文档引用的一致性和可预测性
+**分布式查询**：通过Zenoh网络的键值空间实现文档和块的分布式定位
+**缓存策略**：本地缓存解析结果以优化重复访问的性能
+**错误处理**：优雅处理网络分区、文档不存在等异常情况
 ```
 
 #### 分布式引用缓存
@@ -85,24 +74,12 @@ Recipe执行时需要解析其`references`字段中的跨文档引用：
 
 #### 引用解析流程
 
-```yaml
-# Recipe配置中的跨文档引用
-name: "cross-doc-composition"
-references:
-  - source: "elf://my-project/components/shared-utils#helper-functions"
-    target: "shared-code-section"
-    cache_policy: "on_change"
-  - source: "./docs/api#authentication"
-    target: "auth-docs"
-    cache_policy: "always_fresh"
-```
+Recipe系统处理跨文档引用的核心设计理念：
 
-Recipe引擎通过以下步骤处理跨文档引用：
-
-1. **依赖发现**：解析Recipe配置，提取所有跨文档引用
-2. **并行解析**：通过Zenoh并行查询所有依赖的文档
-3. **内容合成**：将解析得到的外部内容整合到当前Recipe的执行上下文中
-4. **版本追踪**：记录所有依赖的版本信息，用于缓存失效判断
+**声明式依赖**：通过配置方式明确声明所有外部依赖，提高透明度
+**并行处理**：利用Zenoh的并发查询能力同时解析多个依赖
+**内容整合**：将外部内容无缝整合到当前执行上下文中
+**版本感知**：追踪依赖版本变化，实现智能缓存失效机制
 
 ### 3.5.3. 引用完整性维护
 
@@ -117,20 +94,12 @@ Recipe引擎通过以下步骤处理跨文档引用：
 
 #### 引用更新传播
 
-```mermaid
-sequenceDiagram
-    participant A as 文档A(源文档)
-    participant Z as Zenoh网络
-    participant B as 文档B(目标文档)
-    participant C as 文档C(引用文档A)
-    
-    B->>Z: 发布内容变更
-    Z->>A: 通知目标变更
-    A->>A: 更新Link Block缓存
-    A->>Z: 发布引用更新
-    Z->>C: 通知引用变更
-    C->>C: 重新渲染依赖内容
-```
+引用更新传播遵循以下设计模式：
+
+**事件驱动架构**：目标内容变更触发级联更新通知
+**松耦合通信**：通过Zenoh发布/订阅模式实现文档间解耦
+**增量更新**：只传播实际变更的内容，优化网络使用
+**最终一致性**：确保所有引用者最终获得一致的更新状态
 
 ### 3.5.4. 网络分区与离线处理
 
