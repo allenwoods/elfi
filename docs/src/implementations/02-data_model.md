@@ -1,6 +1,6 @@
 # Types模块：核心数据结构实现
 
-本文档详细说明 ELFI Types 模块的实际实现，包括核心数据结构、API设计、性能特征和使用指南。
+本文档说明 ELFI Types 模块的设计思路、实现策略和使用场景。详细的API参考请查看 [Rust API 文档](../target/doc/types/index.html)。
 
 ## 1. 模块概览
 
@@ -22,53 +22,19 @@ ELFI Types 模块是整个ELFI系统的数据结构基础，提供类型安全�
 - **并发安全**：支持多线程环境下的安全操作
 - **测试覆盖**：单元测试覆盖率 > 80%，包含性能和集成测试
 
-### 1.2. 核心数据结构
+### 1.2. 核心数据结构设计
 
-**Document - 文档容器**：
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Document {
-    pub id: String,                    // 文档唯一标识（UUID）
-    pub blocks: Vec<Block>,           // 文档内所有块
-    pub metadata: DocumentMetadata,   // 文档级元数据
-}
+**Document**：文档容器，管理一组相关的块。采用扁平存储 + 逻辑层级的设计，既支持CRDT协作，又保持结构清晰。
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DocumentMetadata {
-    pub title: Option<String>,        // 文档标题
-    pub attributes: HashMap<String, serde_json::Value>, // 自定义属性
-}
-```
+**Block**：基础内容单元，采用4字段设计：
+- `id`: UUID标识符，确保全局唯一性
+- `name`: 可选的人类可读名称，便于引用
+- `block_type`: 类型标识，支持用户自定义
+- `attributes` + `content`: 分离元数据和内容，支持多种内容格式
 
-**Block - 基础内容单元**：
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Block {
-    pub id: String,                   // 块唯一标识（UUID）
-    pub name: Option<String>,         // 人类可读名称
-    pub block_type: String,          // 块类型标识
-    pub attributes: HashMap<String, serde_json::Value>, // 块属性
-    pub content: BlockContent,       // 块内容
-}
+**Relation**：描述块间关系，支持跨文档引用。设计简洁但功能强大，通过attributes支持复杂关系语义。
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum BlockContent {
-    Text(String),       // 文本内容
-    Relations(String),  // 关系定义语法
-    Binary(Vec<u8>),   // 二进制数据
-}
-```
-
-**Relation - 块间关系**：
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Relation {
-    pub from: String,     // 源块ID
-    pub to: String,       // 目标块ID或URI
-    pub relation_type: String,  // 关系类型
-    pub attributes: HashMap<String, serde_json::Value>, // 关系属性
-}
-```
+**详细的数据结构定义请参考**: [Rust API 文档](../target/doc/types/index.html)
 
 ## 2. 块级数据结构设计
 
