@@ -27,12 +27,15 @@
 - [Extension实现机制](./implementations/07-extension.md)
 
 # 使用场景
+
+- [使用场景概览](./usecases/00-overview.md)
 - [自举开发](./usecases/01-bootstrapping.md)
 - [对话即文档](./usecases/02-conversation-as-document.md)
 - [文档即应用](./usecases/03-document-as-app.md)
+- [生成JS接口](./usecases/04-generate-js-interface.md)
 
 ---
 
 # API 参考
 
-- [Rust API 文档](../target/doc/types/index.html)
+- [API 参考文档](./api-reference.md)
