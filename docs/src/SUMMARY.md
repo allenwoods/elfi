@@ -11,6 +11,7 @@
 - [Weave API](./designs/03-weave.md)
 - [Tangle API](./designs/04-tangle.md)
 - [解释器](./designs/05-interpreter.md)
+- [Extension系统](./designs/06-extension.md)
 
 ---
 
@@ -23,7 +24,7 @@
 - [内容创作层](./implementations/04-weave.md)
 - [渲染执行层](./implementations/05-tangle.md)
 - [多语言封装](./implementations/06-wrapper.md)
-- [插件扩展系统](./implementations/07-extension.md)
+- [Extension实现机制](./implementations/07-extension.md)
 
 # 使用场景
 - [自举开发](./usecases/01-bootstrapping.md)

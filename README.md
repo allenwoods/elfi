@@ -4,10 +4,16 @@
 
 ## 📖 开发者文档
 
-如果你是开发者或贡献者，请查看以下文档：
+### 🚀 新开发者入门
+如果你是第一次参与ELFI项目，请按顺序阅读：
 
+1. **[ROADMAP.md](ROADMAP.md)** - 项目进度概览和当前里程碑
+2. **[DEVELOPMENT.md](DEVELOPMENT.md)** - 环境配置、TDD工作流程和开发规范  
+3. **[plans/01-overview.md](plans/01-overview.md)** - 项目架构、模块职责和开发策略
+4. **[docs/src/usecases/00-overview.md](docs/src/usecases/00-overview.md)** - 核心用例和Subagent使用指南
+
+### 📚 详细文档
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - 贡献者指南，包含快速开始、项目结构、开发命令等
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - 详细的开发环境配置指南，包括多平台安装说明
 - **[docs/README.md](docs/README.md)** - 文档构建和维护指南
 - **[scripts/README.md](scripts/README.md)** - 自动化脚本使用说明
 
@@ -22,9 +28,164 @@
 - **[Weave API](docs/src/designs/03-weave.md)** - 内容创作API、关系管理、IDE集成
 - **[Tangle API](docs/src/designs/04-tangle.md)** - 交互渲染和Recipe系统
 - **[解释器](docs/src/designs/05-interpreter.md)** - Rust内核实现
+- **[Extension系统](docs/src/designs/06-extension.md)** - 插件架构设计和生态系统
 
 **重要笔记：**
 - **文档结构**: 所有需要通过 `mdbook` 编译的文档源文件（`.md` 文件）都**必须**放置在 `docs/src/` 目录下。`docs/src/SUMMARY.md` 文件定义了最终文档的目录结构。
+
+## 命令设计原则
+
+为保证CLI命令的一致性和可发现性，请遵循以下原则：
+
+### 命令组织原则
+- **所有命令必须在[命令速查表](docs/src/03-cheatsheet.md)中列出** - 这是唯一的命令参考文档
+- **优先使用二级命令组织相关功能** - 将功能相关的操作归类到同一个一级命令下
+- **使用URI统一支持文档和区块操作** - 所有接受目标的命令应使用URI格式而非简单的ID
+- **避免无必要的新一级命令** - 优先考虑将新功能作为现有命令的子命令
+
+### URI格式规范
+- **完整URI**: `elf://[user/]repo/doc[/block-id]`
+- **相对引用**: `./doc/block-id` (同仓库) | `#block-id` (同文档)
+- **示例**: 
+  - `elf://my-project/doc` - 整个文档
+  - `elf://my-project/doc/block-001` - 特定区块
+  - `./doc/block-001` - 相对路径
+
+### 命令分类
+- **Extension管理**: 使用 `elfi extension <subcommand>` 统一管理
+- **权限管理**: 使用 `elfi permission <subcommand>` 统一管理  
+- **同步操作**: 使用 `elfi sync [subcommand]` 统一管理
+- **核心工作流**: 保留为一级命令（open, add, link, export等）
+
+## 开发规范
+
+### TDD开发流程
+
+**所有开发必须遵循Test-Driven Development流程：**
+
+1. **先写测试，后写实现** - 每个功能开发前必须先编写对应的单元测试
+2. **真实接口，Mock依赖** - 测试中使用真实的模块实现，依赖其他模块时使用Interface + Mock
+3. **Interface优先原则** - 如果依赖的模块Interface不存在，测试应报错提醒对应开发者实现
+4. **迭代开发** - 重复"运行测试→实现功能→运行测试"直到所有测试通过
+
+### 模块边界和接口约定
+
+**严格的模块职责分离：**
+- 每个模块只负责自己的核心功能，不得实现其他模块的功能
+- 模块间交互必须通过Interface trait，不允许直接依赖具体实现
+- 未实现的依赖必须抛出`NotImplemented` error，不能自己实现替代方案
+
+**数据结构共享原则：**
+- 所有核心数据结构定义在`elfi-types` crate中
+- 禁止在不同模块中重复定义相似的数据结构
+- 新增数据类型必须在types模块中统一定义
+
+### 代码质量要求
+
+**测试覆盖率标准：**
+- 单元测试覆盖率必须 > 80%
+- 所有公共API必须有对应测试
+- 边界条件和错误情况必须有测试覆盖
+
+**代码提交规范：**
+```bash
+# 每次提交前必须运行
+just test      # 单元测试
+just lint      # 代码格式检查
+just typecheck # 类型检查
+```
+
+**提交信息格式：**
+```
+feat(module): 简短描述
+
+- 详细变更内容
+- 相关测试覆盖
+
+🤖 Generated with Claude Code
+```
+
+### 文档同步要求
+
+**实现完成后的文档更新顺序：**
+1. `docs/src/designs/{module}.md` - 设计文档
+2. `docs/src/implementations/{module}.md` - 实现文档  
+3. `docs/src/03-cheatsheet.md` - 命令参考
+4. 如有新的开发注意事项，更新此CLAUDE.md文件
+
+### 避免Over-Engineering原则
+
+- **恰好够用**: 只实现当前需求，不预设未来功能
+- **组合优于创新**: 优先通过现有模块组合实现功能
+- **集成测试验证**: 通过三大用例的集成测试验证功能完整性
+
+### 错误处理统一规范
+
+```rust
+// 使用统一的错误类型
+use elfi_types::error::ElfiError;
+
+// 模块未实现时的标准错误
+return Err(ElfiError::NotImplemented { 
+    module: "elfi-storage".to_string() 
+});
+
+// 依赖模块错误的包装
+dependency_result.map_err(|e| ElfiError::Dependency { 
+    source: e.into() 
+})?;
+```
+
+### 依赖管理规范
+
+**⚠️ 重要警告: 依赖版本变更管控**
+
+所有依赖相关的修改必须严格管控：
+
+1. **禁止随意修改依赖版本** - 任何对 `Cargo.toml` 中依赖版本的修改都可能导致：
+   - API破坏性变更影响现有代码
+   - 版本冲突导致编译失败  
+   - 安全漏洞或性能回退
+   - 跨平台兼容性问题
+
+2. **依赖变更流程**:
+   ```
+   提议变更 → 技术讨论 → 影响评估 → 测试验证 → 团队确认 → 实施变更
+   ```
+
+3. **必须讨论的变更类型**:
+   - 主版本升级 (如 `1.x` → `2.x`)
+   - 核心依赖变更 (automerge, zenoh, tree-sitter, tokio)
+   - 新增依赖库
+   - 移除现有依赖
+
+4. **例外情况**:
+   - 安全补丁的patch版本更新 (如 `1.0.1` → `1.0.2`)
+   - 开发依赖的小版本更新 (dev-dependencies)
+
+5. **变更文档要求**:
+   - 详细说明变更原因和预期收益
+   - 列出潜在的破坏性变更
+   - 提供回滚方案
+   - 更新 `plans/03-dependencies.md` 文档
+
+**当前稳定依赖版本** (参考 `plans/03-dependencies.md`):
+- automerge = "0.5" (API开发中，需谨慎)
+- zenoh = "1.5" (最新稳定版)  
+- tree-sitter = "0.25" (最新版本)
+- tokio = "1.0" (长期稳定版)
+
+### 性能和安全基线
+
+**性能指标：**
+- 文档同步延迟 < 100ms
+- 单文档内存使用 < 100MB  
+- 支持并发用户数 > 10
+
+**安全要求：**
+- 不在代码中硬编码任何密钥或敏感信息
+- 不在日志中输出用户敏感数据
+- 所有网络通信使用安全协议
 
 ## 项目愿景
 

@@ -294,13 +294,61 @@ chmod +x docs/merge_markdown.sh
 
 ## 🤝 贡献指南
 
+### 开发基本原则
+
+#### TDD开发流程
+**所有开发必须遵循Test-Driven Development流程：**
+
+1. **先写测试，后写实现** - 每个功能开发前必须先编写对应的单元测试
+2. **真实接口，Mock依赖** - 测试中使用真实的模块实现，依赖其他模块时使用Interface + Mock
+3. **Interface优先原则** - 如果依赖的模块Interface不存在，测试应报错提醒对应开发者实现
+4. **迭代开发** - 重复"运行测试→实现功能→运行测试"直到所有测试通过
+
+#### 模块边界和接口约定
+- 每个模块只负责自己的核心功能，不得实现其他模块的功能
+- 模块间交互必须通过Interface trait，不允许直接依赖具体实现
+- 未实现的依赖必须抛出`NotImplemented` error，不能自己实现替代方案
+
+#### 依赖管理规范
+- **禁止直接编辑Cargo.toml添加依赖**
+- 必须使用 `cargo add` 命令添加依赖
+- 主版本升级需要团队讨论
+- 核心依赖变更需要更新 `plans/03-dependencies.md`
+
 ### 开发工作流
 
-1. **Fork 项目** 并克隆到本地
-2. **创建功能分支**: `git checkout -b feature/amazing-feature`
-3. **进行开发** 并定期提交
-4. **运行测试**: `cargo test` 和 `just build`
-5. **提交 PR** 并请求代码审查
+#### Git分支管理
+**重要**: 所有功能开发必须遵循以下分支规范：
+
+```bash
+# 1. 确保在dev分支的最新状态
+git checkout dev
+git pull origin dev
+
+# 2. 从dev分支创建新的功能分支
+git checkout -b feat/模块名-功能描述
+
+# 示例：
+git checkout -b feat/types-document-structure
+git checkout -b feat/parser-elf-grammar
+git checkout -b feat/core-crdt-implementation
+```
+
+#### 分支命名规范
+- **feat/**: 新功能开发 (如 `feat/types-block-definition`)
+- **fix/**: 问题修复 (如 `fix/parser-syntax-error`)
+- **refactor/**: 代码重构 (如 `refactor/core-api-cleanup`)
+- **test/**: 测试相关 (如 `test/integration-conversation-scenario`)
+- **docs/**: 文档更新 (如 `docs/api-reference-update`)
+
+#### 完整开发流程
+
+1. **创建功能分支**: `git checkout -b feat/模块名-功能描述`
+2. **遵循TDD流程** 进行开发：先写测试，再实现功能
+3. **运行质量检查**: `cargo test`, `cargo fmt`, `cargo clippy`
+4. **提交到功能分支**: `git push origin feat/模块名-功能描述`
+5. **创建PR到dev分支** 并请求代码审查
+6. **合并后删除功能分支**: `git branch -d feat/模块名-功能描述`
 
 ### 代码规范
 
@@ -308,6 +356,7 @@ chmod +x docs/merge_markdown.sh
 - 运行 `cargo clippy` 检查代码质量
 - 添加适当的文档注释
 - 为新功能编写测试
+- 测试覆盖率必须 > 80%
 
 ### 文档规范
 
@@ -329,3 +378,13 @@ chmod +x docs/merge_markdown.sh
 **Ready to hack!** 🎉
 
 运行 `just --list` 查看所有可用的开发任务。
+
+## 🚀 下一步
+
+环境配置完成后，请继续阅读：
+
+- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - 开发规范、工作流程和代码贡献指南
+- **[plans/01-overview.md](plans/01-overview.md)** - 项目实现计划和模块依赖关系
+- **[plans/02-sop.md](plans/02-sop.md)** - TDD开发流程规范
+
+这些文档将帮助你了解项目架构、开发规范和具体的实现计划。

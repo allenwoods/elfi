@@ -549,13 +549,13 @@ elfi log --block block-002
 # e5f6a7b8 | 10:50 | Bob | Modified block-002 (冲突)
 
 # Alice 决定将 ownership 转移给 Bob
-elfi transfer block-002 --to Bob
+elfi permission transfer elf://project/doc/block-002 --to Bob
 # 返回: Ownership of block-002 transferred to Bob
 
 # Bob 主动获取所有权并选择他的版本
-elfi claim block-002
+elfi permission claim elf://project/doc/block-002
 # 返回: You are now the owner of block-002
-elfi resolve block-002 --use e5f6a7b8
+elfi sync resolve elf://project/doc/block-002 --use e5f6a7b8
 # 返回: block-002 resolved with specified version
 ```
 
@@ -575,18 +575,18 @@ elfi resolve block-002 --use e5f6a7b8
    - 接收者必须显式接受ownership
 
 ```bash
-# 查看区块所有权
-elfi info block-002
+# 查看区块权限信息
+elfi permission info elf://project/doc/block-002
 # Type: code (manual)
 # Owner: Alice
 # Modified: 2 conflicts pending
 
 # 转移所有权（直接转移）
-elfi transfer block-002 --to Bob
+elfi permission transfer elf://project/doc/block-002 --to Bob
 # 返回: Ownership of block-002 transferred to Bob
 
 # Bob主动获取所有权
-elfi claim block-002
+elfi permission claim elf://project/doc/block-002
 # 返回: You are now the owner of block-002
 ```
 
@@ -609,16 +609,16 @@ sequenceDiagram
     Alice->>ELFI: elfi log --block block-002
     ELFI->>Alice: 显示 block-002 的变更历史
     
-    Alice->>ELFI: elfi transfer block-002 --to Bob
+    Alice->>ELFI: elfi permission transfer elf://project/doc/block-002 --to Bob
     ELFI->>ELFFile: 更新 ownership 信息
     ELFI->>Bob: 发送 ownership 转移通知
     
     ELFFile->>Bob: 提示手动同步 block-002
     Note over Bob: 收到 ownership 转移通知
     
-    Bob->>ELFI: elfi claim block-002
+    Bob->>ELFI: elfi permission claim elf://project/doc/block-002
     ELFI->>ELFFile: 确认 Bob 为新 owner
-    Bob->>ELFI: elfi resolve block-002 --use e5f6a7b8
+    Bob->>ELFI: elfi sync resolve elf://project/doc/block-002 --use e5f6a7b8
     ELFI->>ELFFile: 确认 Bob 的编辑版本
     Note over ELFFile: 冲突解决完成
 ```
@@ -1033,9 +1033,133 @@ sequenceDiagram
 
 这个阶段展示了 `elfi` 在处理复杂内容转换和知识管理方面的强大能力，将实时对话无缝转换为有价值的技术文档。
 
+### 阶段10：Extension扩展
+
+#### 需求场景
+随着项目发展，Alice发现需要支持一些ELFI核心不支持的特殊功能，比如Protocol Buffers的处理。这时需要通过Extension系统来扩展ELFI的能力。
+
+#### 传统方式 vs. elfi 方式
+
+**传统方式：**
+- 手动安装和配置各种工具
+- 在不同工具间来回切换
+- 需要自己维护工具链的一致性
+
+**elfi 方式：**
+```bash
+# 安装Protocol Buffers支持Extension
+elfi extension install protobuf-support
+
+# 现在可以在.elf文件中使用新的块类型
+```
+
+在`.elf`文件中使用Extension提供的新功能：
+
+```elf
+---
+id: proto-definition
+type: proto_message  # Extension提供的新类型
+name: user-proto
+attributes:
+  package: com.example.user
+  version: "v1"
+---
+syntax = "proto3";
+
+package com.example.user;
+
+message User {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  UserProfile profile = 4;
+}
+
+message UserProfile {
+  string first_name = 1;
+  string last_name = 2;
+  repeated string tags = 3;
+}
+
+---
+id: proto-generator
+type: recipe
+name: protobuf-codegen
+---
+name: "protobuf-code-generator"
+
+selector:
+  types: ["proto_message", "proto_service"]
+
+transform:
+  - type: "protobuf_compiler"  # Extension提供的转换器
+    action: "generate_code"
+    config:
+      languages: ["typescript", "python", "go"]
+      output_format: "modules"
+      grpc_support: true
+
+output:
+  format: "multi"
+  typescript: "./generated/ts/"
+  python: "./generated/py/"
+  go: "./generated/go/"
+```
+
+**使用Extension功能：**
+```bash
+# 使用Extension增强的功能生成代码
+elfi export user-api.elf protobuf-codegen ./output/
+
+# Extension会生成多种语言的代码和gRPC客户端
+# ./output/ts/user_pb.ts, user_grpc_web_pb.ts
+# ./output/py/user_pb2.py, user_pb2_grpc.py  
+# ./output/go/user.pb.go, user_grpc.pb.go
+
+# 管理Extension
+elfi list extensions         # 查看已安装的Extension
+elfi extension update protobuf-support # 更新Extension
+elfi extension remove protobuf-support # 卸载Extension
+```
+
+优势：
+- **功能扩展**：通过Extension获得专业的领域特定功能
+- **生态集成**：与现有工具链深度集成
+- **安全可控**：Extension在沙箱环境中运行，权限可控
+- **版本管理**：自动处理Extension的版本兼容性
+
+#### 操作流程
+
+```mermaid
+sequenceDiagram
+    participant Alice
+    participant ELFI
+    participant ExtRepo as Extension仓库
+    participant ExtSystem as Extension系统
+    
+    Note over Alice, ExtSystem: Extension扩展阶段
+    Alice->>ELFI: elfi extension install protobuf-support
+    ELFI->>ExtRepo: 查询Extension信息
+    ExtRepo->>ELFI: 返回包信息和下载地址
+    ELFI->>ExtSystem: 下载并验证Extension
+    ExtSystem->>ExtSystem: 安全检查和权限验证
+    ExtSystem->>ELFI: Extension安装完成
+    ELFI->>Alice: Extension可用
+    
+    Alice->>ELFI: 在.elf中使用proto_message类型
+    ELFI->>ExtSystem: 调用Extension功能
+    ExtSystem->>ELFI: 处理protobuf内容
+    
+    Alice->>ELFI: elfi export --recipe=protobuf-codegen
+    ELFI->>ExtSystem: 使用Extension转换器
+    ExtSystem->>ExtSystem: 生成多语言代码
+    ExtSystem->>ELFI: 返回生成结果
+    ELFI->>Alice: 代码生成完成
+```
+
 ## 总结
 
-上面的 9 个阶段展示了 elfi 的完整工作流程。下图展示了各个环节的关系和决策点：
+上面的 10 个阶段展示了 elfi 的完整工作流程。下图展示了各个环节的关系和决策点：
 
 ```mermaid
 flowchart TD
@@ -1062,8 +1186,12 @@ flowchart TD
     
     BuildDeploy --> ConversationDoc{需要对话转文档?}
     ConversationDoc -->|是| Stage9[阶段9: 对话即文档]
-    ConversationDoc -->|否| End([结束])
-    Stage9 --> End
+    ConversationDoc -->|否| ExtensionCheck{需要Extension?}
+    ConversationDoc -->|是| Stage9[阶段9: 对话即文档]
+    Stage9 --> ExtensionCheck
+    ExtensionCheck -->|是| Stage10[阶段10: Extension扩展]
+    ExtensionCheck -->|否| End([结束])
+    Stage10 --> End
     
 ```
 

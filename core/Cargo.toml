@@ -1,0 +1,10 @@
+[package]
+name = "elfi-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+automerge.workspace = true
+parser = { version = "0.1.0", path = "../parser" }
+tokio = { workspace = true, features = ["full"] }
+types = { version = "0.1.0", path = "../types" }

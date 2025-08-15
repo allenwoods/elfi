@@ -1,6 +1,73 @@
-[package]
-name = "elfi"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [
+    "types",
+    "parser", 
+    "core",
+    "storage",
+    "weave",
+    "tangle",
+    "recipe",
+    "cli",
+    "extension",
+]
+resolver = "2"
 
-[dependencies]
+[workspace.dependencies]
+# CRDT实现
+automerge = "0.5"
+
+# 网络层  
+zenoh = "1.5"
+
+# 异步运行时
+tokio = { version = "1.0", features = ["full"] }
+
+# 序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# 解析器
+tree-sitter = "0.25"
+
+# 错误处理
+thiserror = "1.0"
+anyhow = "1.0"
+
+# 模板引擎
+handlebars = "4.0"
+
+# 并发数据结构
+dashmap = "5.0"
+
+# 日志追踪
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# HTTP客户端
+reqwest = { version = "0.11", features = ["json"] }
+
+# 文件监听
+notify = "6.0"
+
+# UUID生成
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# 时间处理
+chrono = { version = "0.4", features = ["serde"] }
+
+# 开发依赖
+tokio-test = "0.4"
+proptest = "1.0"
+criterion = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true
+overflow-checks = true

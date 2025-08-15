@@ -131,10 +131,8 @@ elfi不提供内置Recipe，每个项目根据需要自定义：
 | 一级命令 | 二级命令 | 必选参数 | 可选参数 | 说明 |
 |---------|---------|---------|---------|------|
 | sync | - | - | - | 同步所有变更 |
-| info | - | block-id | - | 查看区块信息和所有权 |
-| transfer | - | block-id | --to | 转移区块所有权 |
-| claim | - | block-id | - | 获取区块所有权 |
-| resolve | - | block-id | --use | 解决冲突 |
+| sync | resolve | URI | --use | 解决冲突 |
+| sync | status | - | URI | 查看同步状态 |
 
 **冲突解决选项：**
 - `--use <hash-id>`: 使用特定版本
@@ -144,14 +142,12 @@ elfi不提供内置Recipe，每个项目根据需要自定义：
 **示例：**
 - `elfi sync` 
   - 返回: `✓ CRDT blocks: 2 auto-merged` / `⚠ Manual blocks: 1 conflict detected`
-- `elfi info block-002` 
-  - 返回: `Type: code (manual), Owner: Alice, Modified: 2 conflicts pending`
-- `elfi transfer block-002 --to Bob` 
-  - 返回: `Ownership of block-002 transferred to Bob`
-- `elfi claim block-002` 
-  - 返回: `✓ You are now the owner of block-002`
-- `elfi resolve block-002 --use e5f6a7b8` 
-  - 返回: `block-002 resolved with specified version`
+- `elfi sync resolve elf://my-project/doc/block-002 --use e5f6a7b8` 
+  - 返回: `Conflict resolved for block-002 with specified version`
+- `elfi sync status elf://my-project/doc` 
+  - 返回: `2 blocks synchronized, 1 conflict pending`
+- `elfi sync status`
+  - 返回: `All documents synchronized`
 
 ### 所有权规则
 
@@ -225,16 +221,103 @@ elfi不提供内置Recipe，每个项目根据需要自定义：
 - `elfi run --recipe build` 
   - 返回: `Build completed successfully`
 
+### 🔐 permission - 权限管理
+
+| 一级命令 | 二级命令 | 必选参数 | 可选参数 | 说明 |
+|---------|---------|---------|---------|------|
+| permission | info | URI | - | 查看权限信息 |
+| permission | transfer | URI | --to | 转移所有权 |
+| permission | claim | URI | - | 声明所有权 |
+| permission | grant | URI | --user, --permission | 授予权限 |
+| permission | revoke | URI | --user, --permission | 撤销权限 |
+| permission | review | URI | - | 查看权限历史 |
+
+**权限类型：**
+- `read`: 读取权限
+- `write`: 写入权限
+- `admin`: 管理权限
+
+**示例：**
+- `elfi permission info elf://my-project/doc/block-001`
+  - 返回: `Owner: alice, Permissions: read(bob), write(charlie)`
+- `elfi permission transfer elf://my-project/doc/block-001 --to bob`
+  - 返回: `Ownership transfer initiated, awaiting bob's confirmation`
+- `elfi permission claim elf://my-project/doc/block-001`
+  - 返回: `Ownership claimed successfully`
+- `elfi permission grant elf://my-project/doc/block-001 --user bob --permission write`
+  - 返回: `Write permission granted to bob`
+- `elfi permission revoke elf://my-project/doc/block-001 --user bob --permission write`
+  - 返回: `Write permission revoked from bob`
+
+### 📦 extension - Extension管理
+
+| 一级命令 | 二级命令 | 必选参数 | 可选参数 | 说明 |
+|---------|---------|---------|---------|------|
+| extension | install | extension-name | --version, --global, --dev, --force | 安装Extension |
+| extension | update | extension-name | - | 更新Extension |
+| extension | remove | extension-name | - | 卸载Extension |
+| extension | search | keyword | - | 搜索Extension |
+| extension | init | extension-name | --template, --author | 初始化Extension项目 |
+| extension | pack | - | --output | 打包Extension |
+| extension | publish | - | --registry | 发布Extension |
+| extension | test | - | --target | 测试Extension |
+
+**安装源支持：**
+- **官方仓库**: `elfi extension install protobuf-support`
+- **指定作者**: `elfi extension install author/extension-name`
+- **Git仓库**: `elfi extension install https://github.com/user/extension.git`
+- **本地路径**: `elfi extension install ./my-extension`
+
+**参数说明：**
+- `--version`: 指定版本（如：`--version 1.2.3`）
+- `--global`: 全局安装（所有项目可用）
+- `--dev`: 开发模式安装（支持热重载）
+- `--force`: 强制重新安装
+- `--template`: Extension模板类型（block-type, transformer, renderer, full）
+- `--author`: 作者名称
+- `--output`: 输出路径
+- `--registry`: 发布仓库
+- `--target`: 测试目标
+
+**示例：**
+- `elfi extension install protobuf-support` 
+  - 返回: `Extension protobuf-support@1.0.0 installed successfully`
+- `elfi extension install database-schema --version 2.1.0` 
+  - 返回: `Extension database-schema@2.1.0 installed successfully`
+- `elfi extension install ./my-extension --dev` 
+  - 返回: `Extension loaded in development mode`
+- `elfi extension update protobuf-support` 
+  - 返回: `Extension updated to version 1.1.0`
+- `elfi extension remove protobuf-support` 
+  - 返回: `Extension protobuf-support removed successfully`
+- `elfi extension search protobuf` 
+  - 返回: `Found 3 extensions: protobuf-support, grpc-tools, proto-validator`
+- `elfi extension init my-extension --template block-type --author "Alice"`
+  - 返回: `Extension project my-extension created with block-type template`
+- `elfi extension pack --output ./dist/my-extension.elf`
+  - 返回: `Extension packed successfully: my-extension.elf`
+- `elfi extension publish --registry official`
+  - 返回: `Extension published to official registry`
+- `elfi extension test --target integration`
+  - 返回: `Integration tests passed: 15/15`
+
 ### 📋 list - 资源列表
 
 | 一级命令 | 二级命令 | 必选参数 | 可选参数 | 说明 |
 |---------|---------|---------|---------|------|
 | list | recipes | - | - | 列出所有可用Recipe |
 | list | blocks | - | --type | 列出区块 |
+| list | extensions | - | --global | 列出已安装的Extension |
 
 **示例：**
 - `elfi list recipes` 
   - 返回: `markdown-export | Custom export configuration for this project`
+- `elfi list blocks --type markdown`
+  - 返回: `block-001, intro-section, main-content`
+- `elfi list extensions` 
+  - 返回: `protobuf-support@1.0.0 | Protocol Buffers support for ELFI`
+- `elfi list extensions --global` 
+  - 返回: `database-schema@2.1.0 | Database schema generation tools`
 
 ---
 
@@ -249,11 +332,14 @@ elfi不提供内置Recipe，每个项目根据需要自定义：
 | `link` | 建立关联 | `elfi link block-002 block-001 --type "implements"` |
 | `export` | 导出内容 | `elfi export --recipe=markdown ./output.md` |
 | `sync` | 同步变更 | `elfi sync` |
+| `permission` | 权限管理 | `elfi permission info elf://project/doc/block` |
 | `log` | 查看历史 | `elfi log --limit 5` |
 | `checkout` | 版本切换 | `elfi checkout --at "hash"` |
 | `close` | 关闭文档 | `elfi close elf://project/doc` |
 | `watch` | IDE集成 | `elfi watch --sync-from ./src/ --format code` |
 | `run` | 执行构建 | `elfi run --recipe build` |
+| `extension` | Extension管理 | `elfi extension install protobuf-support` |
+| `list` | 资源列表 | `elfi list recipes` |
 
 ## 常用工作流
 
@@ -286,12 +372,12 @@ elfi link block-003 block-002 --type "depends_on"  # 建立依赖关系
 
 ### 5. 冲突处理
 ```bash
-elfi sync                                      # 同步变更
-elfi log --block main-function                 # 查看冲突历史
-elfi info main-function                        # 查看区块信息
-elfi transfer main-function --to Bob          # 转移所有权
-elfi claim main-function                       # Bob获取所有权
-elfi resolve main-function --use e5f6a7b8      # 解决冲突
+elfi sync                                                       # 同步变更
+elfi log --block main-function                                  # 查看冲突历史
+elfi permission info elf://my-project/doc/main-function         # 查看区块权限信息
+elfi permission transfer elf://my-project/doc/main-function --to Bob  # 转移所有权
+elfi permission claim elf://my-project/doc/main-function        # Bob获取所有权
+elfi sync resolve elf://my-project/doc/main-function --use e5f6a7b8  # 解决冲突
 ```
 
 ### 6. 时间旅行
@@ -316,6 +402,18 @@ elfi add block --type recipe --name build-config  # 创建构建配置
 elfi export --recipe=build ./output               # 生成构建脚本
 elfi run --recipe build                           # 执行构建
 elfi list recipes                                # 查看所有Recipe
+```
+
+### 9. Extension管理
+```bash
+elfi extension install protobuf-support                    # 安装Extension
+elfi extension install database-schema --version 2.1.0     # 指定版本安装
+elfi extension install ./my-extension --dev                # 开发模式安装
+elfi list extensions                                       # 查看已安装Extension
+elfi extension update protobuf-support                     # 更新Extension
+elfi extension remove protobuf-support                     # 卸载Extension
+elfi extension search database                             # 搜索Extension
+elfi extension init my-new-extension --template block-type # 初始化Extension项目
 ```
 
 ---
@@ -343,6 +441,10 @@ elf://alice/shared-project/doc    # 用户空间
 | 跨仓库引用 | `elf://other-repo/doc/block` | `Cross-repository references not supported` | 仅在同一仓库内引用 |
 | 循环引用 | A引用B，B引用A | `Circular reference detected` | 重新设计引用关系 |
 | 无效URI格式 | `invalid-uri-format` | `Invalid URI format` | 使用正确格式 `elf://repo/doc/block` |
+| Extension不存在 | `elfi extension install unknown-ext` | `Extension 'unknown-ext' not found` | 检查Extension名称 |
+| 版本不兼容 | `elfi extension install old-ext` | `Extension requires ELFI >= 2.0.0` | 升级ELFI或使用兼容版本 |
+| 权限不足 | Extension访问受限资源 | `Permission denied: file_system write` | 检查Extension权限设置 |
+| 权限转移失败 | `elfi permission transfer` | `Transfer rejected by target user` | 联系目标用户重新确认 |
 
 ## 注意事项
 
@@ -374,3 +476,10 @@ elf://alice/shared-project/doc    # 用户空间
 - URI格式：`elf://repo/doc/block-id`
 - 错误处理策略：`placeholder`（占位符）、`error`（停止）、`skip`（跳过）
 - 自动检测循环引用并防止无限递归
+
+### Extension系统
+- Extension是ELFI的扩展插件，提供额外的块类型、转换器和渲染器
+- 通过`elfi install`命令安装，支持多种安装源
+- Extension在沙箱环境中运行，具有权限控制和资源限制
+- 支持开发模式安装，提供热重载功能
+- 使用语义化版本，自动处理兼容性检查
