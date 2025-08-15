@@ -1,7 +1,7 @@
-# 4.b extension 模块开发计划
+# 阶段6b: Extension 模块开发计划
 
-**阶段**: 第四阶段 - 用户接口 (串行)
-**关联文件**: [01-overview.md](./01-overview.md), [04-phase1-c-core.md](./04-phase1-c-core.md), [07-phase4-a-cli.md](./07-phase4-a-cli.md)
+**阶段**: 阶段6 - 扩展层 (并行)
+**关联文件**: [01-overview.md](./01-overview.md), [phase3-core.md](./phase3-core.md), [phase6-recipe.md](./phase6-recipe.md), [phase7-cli.md](./phase7-cli.md)
 
 ## 模块职责
 插件系统实现、多语言绑定、WebAssembly支持。

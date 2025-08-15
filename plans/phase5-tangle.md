@@ -1,7 +1,7 @@
-# 3.b tangle 模块开发计划
+# 阶段5b: Tangle 模块开发计划
 
-**阶段**: 第三阶段 - 应用层 (并行)
-**关联文件**: [01-overview.md](./01-overview.md), [04-phase1-c-core.md](./04-phase1-c-core.md), [06-phase3-a-weave.md](./06-phase3-a-weave.md), [06-phase3-c-recipe.md](./06-phase3-c-recipe.md)
+**阶段**: 阶段5 - 应用层 (并行)
+**关联文件**: [01-overview.md](./01-overview.md), [phase3-core.md](./phase3-core.md), [phase4-storage.md](./phase4-storage.md), [phase5-weave.md](./phase5-weave.md)
 
 ## 模块职责
 渲染执行API、Islands架构实现、交互组件管理。

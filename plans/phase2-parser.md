@@ -1,7 +1,7 @@
-# 1.b parser 模块开发计划
+# 阶段2: Parser 模块开发计划
 
-**阶段**: 第一阶段 - 基础设施 (并行)  
-**关联文件**: [01-overview.md](./01-overview.md), [04-phase1-a-types.md](./04-phase1-a-types.md), [04-phase1-c-core.md](./04-phase1-c-core.md)
+**阶段**: 阶段2 - 语法解析 (串行)  
+**关联文件**: [01-overview.md](./01-overview.md), [phase1-types.md](./phase1-types.md), [phase3-core.md](./phase3-core.md)
 
 ## 🤖 推荐 Subagent
 

@@ -1,7 +1,7 @@
-# 1.a types 模块开发计划
+# 阶段1: Types 模块开发计划
 
-**阶段**: 第一阶段 - 基础设施 (并行)  
-**关联文件**: [01-overview.md](./01-overview.md), [04-phase1-b-parser.md](./04-phase1-b-parser.md), [04-phase1-c-core.md](./04-phase1-c-core.md)
+**阶段**: 阶段1 - 数据基础 (串行)  
+**关联文件**: [01-overview.md](./01-overview.md), [phase2-parser.md](./phase2-parser.md), [phase2-core.md](./phase2-core.md)
 
 ## 🤖 推荐 Subagent
 

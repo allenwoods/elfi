@@ -1,7 +1,7 @@
-# 4.a cli 模块开发计划
+# 阶段7: CLI 模块开发计划
 
-**阶段**: 第四阶段 - 用户接口 (串行)
-**关联文件**: [01-overview.md](./01-overview.md), [04-phase1-c-core.md](./04-phase1-c-core.md), [07-phase4-b-extension.md](./07-phase4-b-extension.md)
+**阶段**: 阶段7 - 用户接口 (串行)
+**关联文件**: [01-overview.md](./01-overview.md), [phase5-weave.md](./phase5-weave.md), [phase5-tangle.md](./phase5-tangle.md), [phase6-recipe.md](./phase6-recipe.md), [phase6-extension.md](./phase6-extension.md)
 
 ## 模块职责
 命令行工具实现，用户接口封装，配置管理。

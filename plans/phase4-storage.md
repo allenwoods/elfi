@@ -1,7 +1,7 @@
-# 2.a storage 模块开发计划
+# 阶段4: Storage 模块开发计划
 
-**阶段**: 第二阶段 - 存储同步 (串行)
-**关联文件**: [01-overview.md](./01-overview.md), [04-phase1-c-core.md](./04-phase1-c-core.md)
+**阶段**: 阶段4 - 存储层 (串行)
+**关联文件**: [01-overview.md](./01-overview.md), [phase3-core.md](./phase3-core.md)
 
 ## 模块职责
 Zenoh网络通信、本地存储管理、分布式同步实现。

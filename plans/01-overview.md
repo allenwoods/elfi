@@ -19,41 +19,72 @@
 
 ```mermaid
 graph TB
-    subgraph "第一阶段 - 基础模块"
-        A[Core<br/>CRDT + Document]
+    subgraph "阶段1 - 数据基础"
+        A[Types<br/>核心数据结构]
+    end
+    
+    subgraph "阶段2 - 语法解析"
         B[Parser<br/>.elf语法解析]
-        C[Storage<br/>Zenoh同步]
     end
     
-    subgraph "第二阶段 - 应用层"
-        D[Weave<br/>内容创作API]
-        E[Tangle<br/>渲染执行API]
-        F[Recipe<br/>内容转换]
+    subgraph "阶段3 - 核心引擎"
+        C[Core<br/>CRDT + Document]
     end
     
-    subgraph "第三阶段 - 接口层"
-        G[CLI<br/>命令行工具]
+    subgraph "阶段4 - 存储层"
+        D[Storage<br/>Zenoh同步]
+    end
+    
+    subgraph "阶段5 - 应用层"
+        E[Weave<br/>内容创作API]
+        F[Tangle<br/>渲染执行API]
+    end
+    
+    subgraph "阶段6 - 扩展层"
+        G[Recipe<br/>内容转换]
         H[Extension<br/>插件系统]
     end
     
-    A --> D
-    A --> E
-    B --> A
-    C --> A
-    D --> F
-    E --> F
+    subgraph "阶段7 - 用户接口"
+        I[CLI<br/>命令行工具]
+    end
+    
+    A --> B
+    B --> C
+    C --> D
+    C --> E
+    C --> F
+    D --> E
+    E --> G
     F --> G
-    A --> H
+    C --> H
+    G --> I
+    H --> I
     
     style A fill:#fff3e0
-    style B fill:#fff3e0
-    style C fill:#fff3e0
-    style D fill:#e1f5fe
-    style E fill:#e1f5fe
-    style F fill:#e1f5fe
+    style B fill:#e8f5e8
+    style C fill:#e1f5fe
+    style D fill:#f3e5f5
+    style E fill:#fff8dc
+    style F fill:#fff8dc
     style G fill:#f9f9f9
     style H fill:#f9f9f9
+    style I fill:#ffeaa7
 ```
+
+**阶段设计原则**：
+- **严格串行开发，避免Mock和Interface复杂性**
+- **每个阶段只有一个模块或紧密相关的并行模块**
+- **上游模块完成后，下游模块立即开始**
+
+**各阶段说明**：
+- **阶段1**：Types - 所有模块的数据结构基础
+- **阶段2**：Parser - .elf文件语法解析，基于Types
+- **阶段3**：Core - CRDT和文档管理，基于Parser输出
+- **阶段4**：Storage - 网络同步层，基于Core接口
+- **阶段5**：Weave + Tangle - 应用层API，可并行开发（都依赖Core+Storage）
+- **阶段6**：Recipe + Extension - 扩展功能，可并行开发
+- **阶段7**：CLI - 用户接口，整合所有模块功能
 
 ## 模块职责边界
 
@@ -172,23 +203,28 @@ mod tests {
 
 ## 开发顺序建议
 
-### 阶段1: 基础设施 (并行)
-1.a **types**: 定义所有核心数据结构 → [04-phase1-a-types.md](./04-phase1-a-types.md)
-1.b **parser**: 实现.elf文件解析 → [04-phase1-b-parser.md](./04-phase1-b-parser.md)
-1.c **core**: 实现CRDT和文档管理 → [04-phase1-c-core.md](./04-phase1-c-core.md)
+### 阶段1: 数据基础 (串行)
+1. **types**: 定义所有核心数据结构 → [phase1-types.md](./phase1-types.md)
 
-### 阶段2: 存储同步 (串行)
-2.a **storage**: 实现Zenoh网络层 → [05-phase2-a-storage.md](./05-phase2-a-storage.md)
-2.b **Core + Storage**: 集成测试
+### 阶段2: 语法解析 (串行)
+2. **parser**: 实现.elf文件解析 → [phase2-parser.md](./phase2-parser.md)
 
-### 阶段3: 应用层 (并行)
-3.a **weave**: 内容创作API → [06-phase3-a-weave.md](./06-phase3-a-weave.md)
-3.b **tangle**: 渲染执行API → [06-phase3-b-tangle.md](./06-phase3-b-tangle.md)
-3.c **recipe**: Recipe系统 → [06-phase3-c-recipe.md](./06-phase3-c-recipe.md)
+### 阶段3: 核心引擎 (串行)
+3. **core**: 实现CRDT和文档管理 → [phase3-core.md](./phase3-core.md)
 
-### 阶段4: 用户接口 (串行)
-4.a **cli**: 命令行工具 → [07-phase4-a-cli.md](./07-phase4-a-cli.md)
-4.b **extension**: 插件系统 → [07-phase4-b-extension.md](./07-phase4-b-extension.md)
+### 阶段4: 存储层 (串行)
+4. **storage**: 实现Zenoh网络层 → [phase4-storage.md](./phase4-storage.md)
+
+### 阶段5: 应用层 (并行)
+5.a **weave**: 内容创作API → [phase5-weave.md](./phase5-weave.md)
+5.b **tangle**: 渲染执行API → [phase5-tangle.md](./phase5-tangle.md)
+
+### 阶段6: 扩展层 (并行)
+6.a **recipe**: Recipe系统 → [phase6-recipe.md](./phase6-recipe.md)
+6.b **extension**: 插件系统 → [phase6-extension.md](./phase6-extension.md)
+
+### 阶段7: 用户接口 (串行)
+7. **cli**: 命令行工具 → [phase7-cli.md](./phase7-cli.md)
 
 ## 集成测试策略
 

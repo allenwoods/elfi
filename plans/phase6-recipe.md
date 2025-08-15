@@ -1,7 +1,7 @@
-# 3.c recipe 模块开发计划
+# 阶段6a: Recipe 模块开发计划
 
-**阶段**: 第三阶段 - 应用层 (并行)
-**关联文件**: [01-overview.md](./01-overview.md), [04-phase1-c-core.md](./04-phase1-c-core.md), [06-phase3-a-weave.md](./06-phase3-a-weave.md), [06-phase3-b-tangle.md](./06-phase3-b-tangle.md)
+**阶段**: 阶段6 - 扩展层 (并行)
+**关联文件**: [01-overview.md](./01-overview.md), [phase5-weave.md](./phase5-weave.md), [phase5-tangle.md](./phase5-tangle.md), [phase6-extension.md](./phase6-extension.md)
 
 ## 模块职责
 Recipe系统实现、内容转换、跨文档引用管理。

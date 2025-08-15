@@ -1,7 +1,7 @@
-# 1.c core 模块开发计划
+# 阶段3: Core 模块开发计划
 
-**阶段**: 第一阶段 - 基础设施 (并行)  
-**关联文件**: [01-overview.md](./01-overview.md), [04-phase1-a-types.md](./04-phase1-a-types.md), [04-phase1-b-parser.md](./04-phase1-b-parser.md), [05-phase2-a-storage.md](./05-phase2-a-storage.md)
+**阶段**: 阶段3 - 核心引擎 (串行)  
+**关联文件**: [01-overview.md](./01-overview.md), [phase1-types.md](./phase1-types.md), [phase2-parser.md](./phase2-parser.md), [phase4-storage.md](./phase4-storage.md)
 
 ## 🤖 推荐 Subagent
 

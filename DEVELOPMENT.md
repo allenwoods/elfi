@@ -383,7 +383,6 @@ git checkout -b feat/core-crdt-implementation
 
 环境配置完成后，请继续阅读：
 
-- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - 开发规范、工作流程和代码贡献指南
 - **[plans/01-overview.md](plans/01-overview.md)** - 项目实现计划和模块依赖关系
 - **[plans/02-sop.md](plans/02-sop.md)** - TDD开发流程规范
 
